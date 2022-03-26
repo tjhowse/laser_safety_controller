@@ -1,93 +1,186 @@
-/*
-// Note: For bad and dumb reasons the arduino IDE does not currently let you set
-// -DLV_CONF_INCLUDE_SIMPLE in the linker config... so we have to manually copy
-// lv_conf.h into wherever your lvgl library is installed.
-// #define LV_CONF_INCLUDE_SIMPLE
-// #include "lv_conf.h"
-#include <lvgl.h>
-// #include <TFT_eSPI.h>
-#include <M5Display.h>
-#include <M5Touch.h>
-// #include <M5Core2.h>
-// #include <WiFi.h>
-// #include <PubSubClient.h>
-
-// These defines are drawn from the M5Core2 library to configure the screen.
-// #define TFT_LED_PIN 32
-// #define TFT_DC_PIN 27
-// #define TFT_CS_PIN 14
-// #define TFT_MOSI_PIN 23
-// #define TFT_CLK_PIN 18
-// #define TFT_RST_PIN 33
-// #define TFT_MISO_PIN 19
-// #define TFT_eSPI_TOUCH_EMULATION
-
-// Define the dimensions of the screen
-static const uint16_t screenWidth  = 320;
-static const uint16_t screenHeight = 240;
-
-// The screen buffer
-static lv_disp_draw_buf_t draw_buf;
-
-// Not sure what this is.
-static lv_color_t buf[ screenWidth * 10 ];
-
-// Initialise the TFT driver. The M5Display library uses this under the hood
-// TFT_eSPI tft = TFT_eSPI(screenWidth, screenHeight);
-
-M5Display Lcd;
-// #include "tj_screen.h"
-
-void setup() {
-    lv_init();
-    Lcd.begin();
-
-    // screen_init(&tft);
-    // screen_init();
-    lv_obj_t *label = lv_label_create( lv_scr_act() );
-    lv_label_set_text( label, "Hello world!" );
-    lv_obj_align( label, LV_ALIGN_CENTER, 0, 0 );
-
-}
-
-void loop() {
-    lv_timer_handler();
-    delay( 5 );
-}*/
-
-/*
-*******************************************************************************
-* Copyright (c) 2021 by M5Stack
-*                  Equipped with M5Core2 sample source code
-*                          配套  M5Core2 示例源代码
-* Visit the website for more information：https://docs.m5stack.com/en/core/core2
-* 获取更多资料请访问：https://docs.m5stack.com/zh_CN/core/core2
-*
-* describe：Display Example.  显示屏示例
-* date：2021/7/21
-*******************************************************************************
-*/
 #include <M5Core2.h>
-#include <lvgl.h>
 
-/* After M5Core2 is started or reset
-the program in the setUp () function will be run, and this part will only be run once.
-在 M5Core2 启动或者复位后，即会开始执行setup()函数中的程序，该部分只会执行一次。 */
-void setup() {
-  M5.begin(); //Init M5Core2.  初始化 M5Core2
-  M5.Lcd.fillScreen(WHITE); // Set the screen background.  设置屏幕底色为白色
-    lv_obj_t *label = lv_label_create( lv_scr_act() );
-    lv_label_set_text( label, "Hello world!" );
-    lv_obj_align( label, LV_ALIGN_CENTER, 0, 0 );
+#include "AXP192.h"
+#include <Arduino.h>
+#include <lvgl.h>
+#include <Wire.h>
+#include <SPI.h>
+// #include "touch.h"
+
+
+TFT_eSPI tft = TFT_eSPI(); /* TFT instance */
+static lv_disp_buf_t disp_buf;
+static lv_color_t buf[LV_HOR_RES_MAX * 10];
+
+/*Read the touchpad*/
+bool my_touchpad_read(lv_indev_drv_t * indev_driver, lv_indev_data_t * data)
+{
+    TouchPoint_t pos = M5.Touch.getPressPoint();
+    bool touched = ( pos.x == -1 ) ? false : true;
+
+    if(!touched) {
+      data->state = LV_INDEV_STATE_REL;
+    } else {
+      data->state = LV_INDEV_STATE_PR;
+
+      /*Set the coordinates*/
+      data->point.x = pos.x;
+      data->point.y = pos.y;
+    }
+
+    return false; /*Return `false` because we are not buffering and no more data to read*/
 }
 
-/* After the program in setup() runs, it runs the program in loop()
-The loop() function is an infinite loop in which the program runs repeatedly
-在setup()函数中的程序执行完后，会接着执行loop()函数中的程序
-loop()函数是一个死循环，其中的程序会不断的重复运行 */
-void loop(){
+/* Display flushing */
+void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p)
+{
+    uint32_t w = (area->x2 - area->x1 + 1);
+    uint32_t h = (area->y2 - area->y1 + 1);
+
+    tft.startWrite();
+    tft.setAddrWindow(area->x1, area->y1, w, h);
+    tft.pushColors(&color_p->full, w * h, true);
+    tft.endWrite();
+
+    lv_disp_flush_ready(disp);
+}
+
+void setup()
+{
+  M5.begin(true, true, true, true);
+  tft.begin(); /* TFT init */
+  tft.setRotation(1);         /* Landscape orientation */
+  M5.Axp.SetLcdVoltage(2800);
+  M5.Axp.SetLcdVoltage(3300);
+  M5.Axp.SetBusPowerMode(0);
+  M5.Axp.SetCHGCurrent(AXP192::kCHG_190mA);
+  M5.Axp.SetLDOEnable(3, true);
+  delay(150);
+  M5.Axp.SetLDOEnable(3, false);
+  M5.Axp.SetLed(1);
+  delay(100);
+  M5.Axp.SetLed(0);
+  M5.Axp.SetLDOVoltage(3, 3300);
+  M5.Axp.SetLed(1);
+
+  lv_disp_buf_init(&disp_buf, buf, NULL, LV_HOR_RES_MAX * 10);
+  lv_init();
+
+  /*Initialize the display*/
+  lv_disp_drv_t disp_drv;
+  lv_disp_drv_init(&disp_drv);
+  disp_drv.hor_res = 320;
+  disp_drv.ver_res = 240;
+  disp_drv.flush_cb = my_disp_flush;
+  disp_drv.buffer = &disp_buf;
+  lv_disp_drv_register(&disp_drv);
+
+  /*Initialize the (dummy) input device driver*/
+  lv_indev_drv_t indev_drv;
+  lv_indev_drv_init(&indev_drv);
+  indev_drv.type = LV_INDEV_TYPE_POINTER;
+  indev_drv.read_cb = my_touchpad_read;
+  lv_indev_drv_register(&indev_drv);
+
+  /*Create a Tab view object*/
+    lv_obj_t *tabview;
+    tabview = lv_tabview_create(lv_scr_act(), NULL);
+
+    /*Add 3 tabs (the tabs are page (lv_page) and can be scrolled*/
+    lv_obj_t *tab1 = lv_tabview_add_tab(tabview, "Tab 1");
+    lv_obj_t *tab2 = lv_tabview_add_tab(tabview, "Tab 2");
+    lv_obj_t *tab3 = lv_tabview_add_tab(tabview, "Tab 3");
 
 
-  M5.update();  //Read the press state of the key.  读取按键 A, B, C 的状态
-    lv_timer_handler();
+    /*Add content to the tabs*/
+    lv_obj_t * label = lv_label_create(NULL, NULL);
+    static lv_anim_path_t path_overshoot;
+    lv_anim_path_init(&path_overshoot);
+    lv_anim_path_set_cb(&path_overshoot, lv_anim_path_overshoot);
+
+    static lv_anim_path_t path_ease_out;
+    lv_anim_path_init(&path_ease_out);
+    lv_anim_path_set_cb(&path_ease_out, lv_anim_path_ease_out);
+
+    static lv_anim_path_t path_ease_in_out;
+    lv_anim_path_init(&path_ease_in_out);
+    lv_anim_path_set_cb(&path_ease_in_out, lv_anim_path_ease_in_out);
+
+    /*Gum-like button*/
+    static lv_style_t style_gum;
+    lv_style_init(&style_gum);
+    lv_style_set_transform_width(&style_gum, LV_STATE_PRESSED, 10);
+    lv_style_set_transform_height(&style_gum, LV_STATE_PRESSED, -10);
+    lv_style_set_value_letter_space(&style_gum, LV_STATE_PRESSED, 5);
+    lv_style_set_transition_path(&style_gum, LV_STATE_DEFAULT, &path_overshoot);
+    lv_style_set_transition_path(&style_gum, LV_STATE_PRESSED, &path_ease_in_out);
+    lv_style_set_transition_time(&style_gum, LV_STATE_DEFAULT, 250);
+    lv_style_set_transition_delay(&style_gum, LV_STATE_DEFAULT, 100);
+    lv_style_set_transition_prop_1(&style_gum, LV_STATE_DEFAULT, LV_STYLE_TRANSFORM_WIDTH);
+    lv_style_set_transition_prop_2(&style_gum, LV_STATE_DEFAULT, LV_STYLE_TRANSFORM_HEIGHT);
+    lv_style_set_transition_prop_3(&style_gum, LV_STATE_DEFAULT, LV_STYLE_VALUE_LETTER_SPACE);
+
+    lv_obj_t * btn1 = lv_btn_create(tab1, NULL);
+    lv_obj_align(btn1, NULL, LV_ALIGN_CENTER, 0, -20);
+    lv_obj_add_style(btn1, LV_BTN_PART_MAIN, &style_gum);
+
+    /*Instead of creating a label add a values string*/
+    lv_obj_set_style_local_value_str(btn1, LV_BTN_PART_MAIN, LV_STATE_DEFAULT, "Gum");
+
+    /*Halo on press*/
+    static lv_style_t style_halo;
+    lv_style_init(&style_halo);
+    lv_style_set_transition_time(&style_halo, LV_STATE_PRESSED, 400);
+    lv_style_set_transition_time(&style_halo, LV_STATE_DEFAULT, 0);
+    lv_style_set_transition_delay(&style_halo, LV_STATE_DEFAULT, 200);
+    lv_style_set_outline_width(&style_halo, LV_STATE_DEFAULT, 0);
+    lv_style_set_outline_width(&style_halo, LV_STATE_PRESSED, 20);
+    lv_style_set_outline_opa(&style_halo, LV_STATE_DEFAULT, LV_OPA_COVER);
+    lv_style_set_outline_opa(&style_halo, LV_STATE_FOCUSED, LV_OPA_COVER);   /*Just to be sure, the theme might use it*/
+    lv_style_set_outline_opa(&style_halo, LV_STATE_PRESSED, LV_OPA_TRANSP);
+    lv_style_set_transition_prop_1(&style_halo, LV_STATE_DEFAULT, LV_STYLE_OUTLINE_OPA);
+    lv_style_set_transition_prop_2(&style_halo, LV_STATE_DEFAULT, LV_STYLE_OUTLINE_WIDTH);
+
+    lv_obj_t * btn2 = lv_btn_create(tab1, NULL);
+    lv_obj_align(btn2, NULL, LV_ALIGN_CENTER, 0, 60);
+    lv_obj_add_style(btn2, LV_BTN_PART_MAIN, &style_halo);
+    lv_obj_set_style_local_value_str(btn2, LV_BTN_PART_MAIN, LV_STATE_DEFAULT, "Halo");
+
+    /*Ripple on press*/
+    static lv_style_t style_ripple;
+    lv_style_init(&style_ripple);
+    lv_style_set_transition_time(&style_ripple, LV_STATE_PRESSED, 300);
+    lv_style_set_transition_time(&style_ripple, LV_STATE_DEFAULT, 0);
+    lv_style_set_transition_delay(&style_ripple, LV_STATE_DEFAULT, 300);
+    lv_style_set_bg_opa(&style_ripple, LV_STATE_DEFAULT, 0);
+    lv_style_set_bg_opa(&style_ripple, LV_STATE_PRESSED, LV_OPA_80);
+    lv_style_set_border_width(&style_ripple, LV_STATE_DEFAULT, 0);
+    lv_style_set_outline_width(&style_ripple, LV_STATE_DEFAULT, 0);
+    lv_style_set_transform_width(&style_ripple, LV_STATE_DEFAULT, -20);
+    lv_style_set_transform_height(&style_ripple, LV_STATE_DEFAULT, -20);
+    lv_style_set_transform_width(&style_ripple, LV_STATE_PRESSED, 0);
+    lv_style_set_transform_height(&style_ripple, LV_STATE_PRESSED, 0);
+
+    lv_style_set_transition_path(&style_ripple, LV_STATE_DEFAULT, &path_ease_out);
+    lv_style_set_transition_prop_1(&style_ripple, LV_STATE_DEFAULT, LV_STYLE_BG_OPA);
+    lv_style_set_transition_prop_2(&style_ripple, LV_STATE_DEFAULT, LV_STYLE_TRANSFORM_WIDTH);
+    lv_style_set_transition_prop_3(&style_ripple, LV_STATE_DEFAULT, LV_STYLE_TRANSFORM_HEIGHT);
+
+    lv_obj_t * btn3 = lv_btn_create(tab1, NULL);
+    lv_obj_align(btn3, NULL, LV_ALIGN_CENTER, 0, 140);
+    lv_obj_add_style(btn3, LV_BTN_PART_MAIN, &style_ripple);
+    lv_obj_set_style_local_value_str(btn3, LV_BTN_PART_MAIN, LV_STATE_DEFAULT, "Ripple");
+
+    label = lv_label_create(tab2, NULL);
+    lv_label_set_text(label, "Second tab");
+
+    label = lv_label_create(tab3, NULL);
+    lv_label_set_text(label, "Third tab");
+}
+
+
+void loop()
+{
+  lv_task_handler(); /* let the GUI do its work */
+  delay(5);
 }
