@@ -1,0 +1,7 @@
+{
+    "env": {
+      "myDefaultIncludePath": ["${workspaceFolder}", "${workspaceFolder}/include","C:\\Users\\tjhowse\\Documents\Arduino\\libraries\\lv_arduino\\src"],
+      "myCompilerPath": "/usr/local/bin/gcc-7"
+    },
+    "version": 4
+  }

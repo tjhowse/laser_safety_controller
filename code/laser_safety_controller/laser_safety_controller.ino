@@ -5,13 +5,17 @@
 #include <lvgl.h>
 #include <Wire.h>
 #include <SPI.h>
-#include "gui.h"
 // #include "touch.h"
+#include "data.h"
 
 
 TFT_eSPI tft = TFT_eSPI(); /* TFT instance */
 static lv_disp_buf_t disp_buf;
 static lv_color_t buf[LV_HOR_RES_MAX * 10];
+
+Sensors sensors;
+
+#include "gui.h"
 
 /*Read the touchpad*/
 bool my_touchpad_read(lv_indev_drv_t * indev_driver, lv_indev_data_t * data)
@@ -84,6 +88,7 @@ void setup()
     lv_indev_drv_register(&indev_drv);
 
     setup_gui();
+
 }
 
 
