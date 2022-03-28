@@ -32,6 +32,7 @@ void setup_gui(void) {
     lv_obj_t *net_config_tab = lv_tabview_add_tab(tabview, "Net Config");
 
     lv_obj_t *sensors_table = lv_table_create(status_tab, NULL);
+    lv_obj_set_click(sensors_table, false);
     // LV_TABLE_PART_BG
     lv_obj_set_style_local_bg_color(sensors_table, LV_TABLE_PART_BG, LV_STATE_DEFAULT, LV_COLOR_GRAY);
 
