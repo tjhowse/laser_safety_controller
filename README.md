@@ -16,3 +16,7 @@ sudo apt update && sudo apt install -y \
 https://sourceforge.net/projects/vcxsrv/
 
 Clone https://github.com/tjhowse/lv_port_pc_vscode
+
+make clean
+make
+LIBGL_ALWAYS_INDIRECT=1 DISPLAY=:0 ./build/bin/demo
