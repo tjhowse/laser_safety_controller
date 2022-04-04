@@ -93,10 +93,60 @@ void setup()
     // pinMode(SPEAKER_PIN, INPUT);
 
     Serial.println("Discovering new sensors");
+
+//   OneWire oneWire;
+//   oneWire.begin(19);
+
+// // Pass our oneWire reference to Dallas Temperature.
+// DallasTemperature sensors;
+// sensors.setOneWire(&oneWire);
+//   sensors.begin();
+// Serial.print("Requesting temperatures...");
+//   sensors.requestTemperatures(); // Send the command to get temperatures
+//   Serial.println("DONE");
+//   // After we got the temperatures, we can print them here.
+//   // We use the function ByIndex, and as an example get the temperature from the first sensor only.
+//   float tempC = sensors.getTempCByIndex(0);
+//   DeviceAddress address;
+//   if (sensors.getAddress(address, 0)) {
+//       for (uint8_t j=0; j<8; j++) {
+//         Serial.print(address[j], HEX);
+//         Serial.print(" ");
+//     }
+//   }
+
+//   // Check if reading was successful
+//   if(tempC != DEVICE_DISCONNECTED_C)
+//   {
+//     Serial.print("Temperature for the device 1 (index 0) is: ");
+//     Serial.println(tempC);
+//   }
+//   else
+//   {
+//     Serial.println("Error: Could not read temperature data");
+//   }
     // pinMode(G27, INPUT);
+
+
+
+
+
+
+
+
     sensors.discover_new_sensors_on_bus(19);
+    delay(1000);
     Serial.println("Updating sensors");
     sensors.update();
+
+
+
+
+
+    // delay(1000);
+    // sensors.update();
+    // delay(1000);
+    // sensors.update();
     // update_sensor_table_display();
     pinMode(G27, OUTPUT);
     digitalWrite(G27, HIGH);
@@ -111,7 +161,8 @@ void setup()
 void loop()
 {
   // dacWrite (25,0);
-  update_sensor_table_display();
+  // sensors.update();
+  // update_sensor_table_display();
   lv_task_handler(); /* let the GUI do its work */
   delay(5);
 }

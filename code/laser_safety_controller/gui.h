@@ -149,12 +149,16 @@ void setup_gui(void) {
 #ifndef SIMULATOR
 
 void update_sensor_table_display() {
+    // Serial.println("??!?");
+    // Serial.println(sensors.sensors.size());
+    // Serial.println(lv_table_get_row_cnt(sensors.table));
     if (sensors.sensors.size() != lv_table_get_row_cnt(sensors.table)) {
         lv_table_set_row_cnt(sensors.table, sensors.sensors.size());
     }
     for (int i = 0; i < sensors.sensors.size(); i++) {
         lv_table_set_cell_value(sensors.table, i, 0, sensors.sensors[i].name.c_str());
-        lv_table_set_cell_value(sensors.table, i, 1, std::to_string(sensors.sensors[i].value).c_str());
+        // lv_table_set_cell_value(sensors.table, i, 1, std::to_string(sensors.sensors[i].value).c_str());
+        // Serial.println(sensors.sensors[i].value);
     }
 
 }

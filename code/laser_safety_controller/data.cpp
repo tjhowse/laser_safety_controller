@@ -24,20 +24,33 @@ void Sensors::update_values() {
 void Sensors::discover_new_sensors_on_bus(uint8_t pin) {
     // Scan the onewire bus report any found sensors.
     auto bus = &(busses[get_onewire_bus_index(pin)].dt);
-    std::vector<DeviceAddress> addresses;
+    std::vector<uint8_t> indicies;
     Serial.println("Scanning bus");
 
+    bus->requestTemperatures();
     uint8_t deviceCount=bus->getDeviceCount();
     Serial.print("Found this many sensors: ");
     Serial.println(deviceCount);
-    bus->requestTemperatures();
     for (uint8_t i=0; i<deviceCount; i++) {
         DeviceAddress address;
-        bus->getAddress(address, i);
+        float tempC = bus->getTempCByIndex(i);
+        Serial.println(tempC);
+        if (bus->getAddress(address, i)) {
+            Serial.print("Found sensor at address: ");
+            for (uint8_t j=0; j<8; j++) {
+                Serial.print(address[j], HEX);
+                Serial.print(" ");
+            }
+            Serial.println();
+        } else {
+            Serial.print("Couldn't read address of sensor at index ");
+            Serial.println(i);
+        }
+
         bool new_sensor = true;
         for (auto s : sensors) {
             if (s.pin != pin) continue;
-            if (s.address == address) {
+            if (s.bus_index == i) {
                 // We already have this sensor
                 new_sensor = false;
                 continue;
@@ -47,15 +60,12 @@ void Sensors::discover_new_sensors_on_bus(uint8_t pin) {
             // We don't have this sensor yet, add it
             Serial.print("Found new sensor on pin ");
             Serial.print(pin);
-            Serial.print(" at address ");
-            for (int j=0; j < 8; j++) {
-                Serial.print(address[j], HEX);
-                Serial.print(" ");
-            }
+            Serial.print(" at index ");
+            Serial.print(i);
             Serial.println();
             Serial.print(" on bus ");
             Serial.println((uint32_t)bus);
-            add_sensor("New Sensor", pin, address, SENSOR_TYPE_ONEWIRE);
+            add_sensor("New Sensor", pin, i, SENSOR_TYPE_ONEWIRE);
         }
     }
 }
@@ -70,8 +80,8 @@ uint8_t Sensors::get_onewire_bus_index(uint8_t pin) {
     return busses.size()-1;
 }
 
-void Sensors::add_sensor(std::string name, uint8_t pin, DeviceAddress address, uint8_t type) {
-    Sensor sensor(name, pin, address, type);
+void Sensors::add_sensor(std::string name, uint8_t pin, uint8_t index, uint8_t type) {
+    Sensor sensor(name, pin, index, type);
 
     if (type == SENSOR_TYPE_ONEWIRE) {
         sensor.dt_bus = &(busses[get_onewire_bus_index(pin)].dt);
@@ -86,11 +96,11 @@ void Sensors::update() {
     update_values();
 }
 
-Sensor::Sensor(std::string name, uint8_t pin, DeviceAddress address, uint8_t type)
+Sensor::Sensor(std::string name, uint8_t pin, uint8_t index, uint8_t type)
 {
     this->name = name;
     this->pin = pin;
-    memcpy(this->address, address, sizeof(DeviceAddress));
+    this->bus_index = index;
     this->type = type;
     if (type == SENSOR_TYPE_DIGITAL) {
         pinMode(pin, INPUT);
@@ -114,7 +124,12 @@ void Sensor::update() {
             // on this bus anymore
             Serial.print("Updating onewire sensor on bus ");
             Serial.println((uint32_t)dt_bus);
-            value = dt_bus->getTempC(address);
+            Serial.print(" at address ");
+            Serial.print(bus_index);
+            Serial.println();
+            value = dt_bus->getTempCByIndex(bus_index);
+            Serial.print("Sensor value: ");
+            Serial.println(value);
             break;
         default:
             break;
