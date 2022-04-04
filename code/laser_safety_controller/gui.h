@@ -1,16 +1,21 @@
 
 
-#define LV_HOR_RES (320)
-#define LV_VER_RES (240)
 
-#define MONITOR_HOR_RES LV_HOR_RES
-#define MONITOR_VER_RES LV_VER_RES
+#define LV_TABLE_CELL_GREY LV_TABLE_PART_CELL1
+#define LV_TABLE_CELL_YELLOW LV_TABLE_PART_CELL3
+#define LV_TABLE_CELL_RED LV_TABLE_PART_CELL4
 
 #include <lvgl.h>
 
 #ifndef SIMULATOR
     #include "data.h"
+#else
+    #define LV_HOR_RES (320)
+    #define LV_VER_RES (240)
 #endif
+
+#define MONITOR_HOR_RES LV_HOR_RES
+#define MONITOR_VER_RES LV_VER_RES
 
 void setup_gui(void) {
     /*Create a Tab view object*/
@@ -54,9 +59,19 @@ void setup_gui(void) {
     lv_anim_path_init(&path_ease_in_out);
     lv_anim_path_set_cb(&path_ease_in_out, lv_anim_path_ease_in_out);
 
-
-    lv_obj_set_style_local_text_color(sensors_table, LV_TABLE_PART_CELL3, LV_STATE_DEFAULT, LV_COLOR_YELLOW);
-    lv_obj_set_style_local_text_color(sensors_table, LV_TABLE_PART_CELL4, LV_STATE_DEFAULT, LV_COLOR_RED);
+    // lv_style_set_pad_top(LV_TABLE_PART_CELL1, LV_STATE_DEFAULT, 2);
+    // lv_style_set_pad_top(LV_TABLE_PART_CELL2, LV_STATE_DEFAULT, 2);
+    // lv_style_set_pad_top(LV_TABLE_PART_CELL3, LV_STATE_DEFAULT, 2);
+    // lv_style_set_pad_top(LV_TABLE_PART_CELL4, LV_STATE_DEFAULT, 2);
+    const int table_cell_pad = 4;
+    lv_obj_set_style_local_pad_top(sensors_table, LV_TABLE_CELL_GREY, LV_STATE_DEFAULT, table_cell_pad);
+    lv_obj_set_style_local_pad_top(sensors_table, LV_TABLE_CELL_YELLOW, LV_STATE_DEFAULT, table_cell_pad);
+    lv_obj_set_style_local_pad_top(sensors_table, LV_TABLE_CELL_RED, LV_STATE_DEFAULT, table_cell_pad);
+    lv_obj_set_style_local_pad_bottom(sensors_table, LV_TABLE_CELL_GREY, LV_STATE_DEFAULT, table_cell_pad);
+    lv_obj_set_style_local_pad_bottom(sensors_table, LV_TABLE_CELL_YELLOW, LV_STATE_DEFAULT, table_cell_pad);
+    lv_obj_set_style_local_pad_bottom(sensors_table, LV_TABLE_CELL_RED, LV_STATE_DEFAULT, table_cell_pad);
+    lv_obj_set_style_local_text_color(sensors_table, LV_TABLE_CELL_YELLOW, LV_STATE_DEFAULT, LV_COLOR_YELLOW);
+    lv_obj_set_style_local_text_color(sensors_table, LV_TABLE_CELL_RED, LV_STATE_DEFAULT, LV_COLOR_RED);
 
     lv_table_set_col_cnt(sensors_table, 2);
     lv_table_set_row_cnt(sensors_table, 4);
@@ -64,88 +79,65 @@ void setup_gui(void) {
     lv_table_set_col_width(sensors_table, 1, 100);
 
     // Mock some values so we can simulate this table without any actual sensors involved.
-    lv_table_set_cell_value(sensors_table, 0, 0, "Resevoir Temp");
-    lv_table_set_cell_value(sensors_table, 0, 1, "31.2 °C");
-    lv_table_set_cell_value(sensors_table, 1, 0, "Laser Outlet Temp");
-    lv_table_set_cell_value(sensors_table, 1, 1, "60.1 °C");
-    lv_table_set_cell_type(sensors_table, 1, 0, LV_TABLE_PART_CELL3);
-    lv_table_set_cell_type(sensors_table, 1, 1, LV_TABLE_PART_CELL3);
-    lv_table_set_cell_value(sensors_table, 2, 0, "Coolant Flow Rate");
-    lv_table_set_cell_value(sensors_table, 2, 1, "1.1 L/min");
-    lv_table_set_cell_type(sensors_table, 2, 0, LV_TABLE_PART_CELL4);
-    lv_table_set_cell_type(sensors_table, 2, 1, LV_TABLE_PART_CELL4);
-    lv_table_set_cell_value(sensors_table, 3, 0, "Laser Current");
-    lv_table_set_cell_value(sensors_table, 3, 1, "20 mA");
+    uint8_t row = 0;
 
-    for (int i = 0; i < 4; i++) {
+    lv_table_set_cell_value(sensors_table, row, 0, "Coolant Flow Rate");
+    lv_table_set_cell_value(sensors_table, row, 1, "1.1 L/min");
+    lv_table_set_cell_type(sensors_table, row, 0, LV_TABLE_CELL_RED);
+    lv_table_set_cell_type(sensors_table, row, 1, LV_TABLE_CELL_RED);
+    row++;
+    lv_table_set_cell_value(sensors_table, row, 0, "Laser Outlet Temp");
+    lv_table_set_cell_value(sensors_table, row, 1, "60.1 °C");
+    lv_table_set_cell_type(sensors_table, row, 0, LV_TABLE_CELL_YELLOW);
+    lv_table_set_cell_type(sensors_table, row, 1, LV_TABLE_CELL_YELLOW);
+    row++;
+
+    lv_table_set_cell_value(sensors_table, row, 0, "Resevoir Temp");
+    lv_table_set_cell_value(sensors_table, row, 1, "31.2 °C");
+    row++;
+
+    lv_table_set_cell_value(sensors_table, row, 0, "Laser Current");
+    lv_table_set_cell_value(sensors_table, row, 1, "20 mA");
+    row++;
+
+    lv_table_set_cell_value(sensors_table, row, 0, "Exhaust Flow");
+    lv_table_set_cell_value(sensors_table, row, 1, "Yes");
+    row++;
+
+    lv_table_set_cell_value(sensors_table, row, 0, "Chiller Output");
+    lv_table_set_cell_value(sensors_table, row, 1, "On");
+    row++;
+
+    lv_table_set_cell_value(sensors_table, row, 0, "Chiller Temp 1");
+    lv_table_set_cell_value(sensors_table, row, 1, "65.3 °C");
+    row++;
+
+    lv_table_set_cell_value(sensors_table, row, 0, "Chiller Temp 2");
+    lv_table_set_cell_value(sensors_table, row, 1, "55.8 °C");
+    row++;
+
+    lv_table_set_cell_value(sensors_table, row, 0, "Chiller Temp 3");
+    lv_table_set_cell_value(sensors_table, row, 1, "55.8 °C");
+    row++;
+
+    lv_table_set_cell_value(sensors_table, row, 0, "Poop Temp");
+    lv_table_set_cell_value(sensors_table, row, 1, "22.5 °C");
+    row++;
+
+    lv_table_set_cell_value(sensors_table, row, 0, "Ambient Temp");
+    lv_table_set_cell_value(sensors_table, row, 1, "26.0 °C");
+    row++;
+
+    lv_table_set_cell_value(sensors_table, row, 0, "Ambient Temp");
+    lv_table_set_cell_value(sensors_table, row, 1, "26.0 °C");
+    row++;
+
+
+    for (int i = 0; i < row-1; i++) {
         lv_table_set_cell_align(sensors_table, i, 0, LV_LABEL_ALIGN_LEFT);
         lv_table_set_cell_align(sensors_table, i, 1, LV_LABEL_ALIGN_LEFT);
     }
 
-    // /*Gum-like button*/
-    // static lv_style_t style_gum;
-    // lv_style_init(&style_gum);
-    // lv_style_set_transform_width(&style_gum, LV_STATE_PRESSED, 10);
-    // lv_style_set_transform_height(&style_gum, LV_STATE_PRESSED, -10);
-    // lv_style_set_value_letter_space(&style_gum, LV_STATE_PRESSED, 5);
-    // lv_style_set_transition_path(&style_gum, LV_STATE_DEFAULT, &path_overshoot);
-    // lv_style_set_transition_path(&style_gum, LV_STATE_PRESSED, &path_ease_in_out);
-    // lv_style_set_transition_time(&style_gum, LV_STATE_DEFAULT, 250);
-    // lv_style_set_transition_delay(&style_gum, LV_STATE_DEFAULT, 100);
-    // lv_style_set_transition_prop_1(&style_gum, LV_STATE_DEFAULT, LV_STYLE_TRANSFORM_WIDTH);
-    // lv_style_set_transition_prop_2(&style_gum, LV_STATE_DEFAULT, LV_STYLE_TRANSFORM_HEIGHT);
-    // lv_style_set_transition_prop_3(&style_gum, LV_STATE_DEFAULT, LV_STYLE_VALUE_LETTER_SPACE);
-
-    // lv_obj_t * btn1 = lv_btn_create(status_tab, NULL);
-    // lv_obj_align(btn1, NULL, LV_ALIGN_CENTER, 0, -20);
-    // lv_obj_add_style(btn1, LV_BTN_PART_MAIN, &style_gum);
-
-    // /*Instead of creating a label add a values string*/
-    // lv_obj_set_style_local_value_str(btn1, LV_BTN_PART_MAIN, LV_STATE_DEFAULT, "Gum");
-
-    // /*Halo on press*/
-    // static lv_style_t style_halo;
-    // lv_style_init(&style_halo);
-    // lv_style_set_transition_time(&style_halo, LV_STATE_PRESSED, 400);
-    // lv_style_set_transition_time(&style_halo, LV_STATE_DEFAULT, 0);
-    // lv_style_set_transition_delay(&style_halo, LV_STATE_DEFAULT, 200);
-    // lv_style_set_outline_width(&style_halo, LV_STATE_DEFAULT, 0);
-    // lv_style_set_outline_width(&style_halo, LV_STATE_PRESSED, 20);
-    // lv_style_set_outline_opa(&style_halo, LV_STATE_DEFAULT, LV_OPA_COVER);
-    // lv_style_set_outline_opa(&style_halo, LV_STATE_FOCUSED, LV_OPA_COVER);   /*Just to be sure, the theme might use it*/
-    // lv_style_set_outline_opa(&style_halo, LV_STATE_PRESSED, LV_OPA_TRANSP);
-    // lv_style_set_transition_prop_1(&style_halo, LV_STATE_DEFAULT, LV_STYLE_OUTLINE_OPA);
-    // lv_style_set_transition_prop_2(&style_halo, LV_STATE_DEFAULT, LV_STYLE_OUTLINE_WIDTH);
-
-    // lv_obj_t * btn2 = lv_btn_create(status_tab, NULL);
-    // lv_obj_align(btn2, NULL, LV_ALIGN_CENTER, 0, 60);
-    // lv_obj_add_style(btn2, LV_BTN_PART_MAIN, &style_halo);
-    // lv_obj_set_style_local_value_str(btn2, LV_BTN_PART_MAIN, LV_STATE_DEFAULT, "Halo");
-
-    // /*Ripple on press*/
-    // static lv_style_t style_ripple;
-    // lv_style_init(&style_ripple);
-    // lv_style_set_transition_time(&style_ripple, LV_STATE_PRESSED, 300);
-    // lv_style_set_transition_time(&style_ripple, LV_STATE_DEFAULT, 0);
-    // lv_style_set_transition_delay(&style_ripple, LV_STATE_DEFAULT, 300);
-    // lv_style_set_bg_opa(&style_ripple, LV_STATE_DEFAULT, 0);
-    // lv_style_set_bg_opa(&style_ripple, LV_STATE_PRESSED, LV_OPA_80);
-    // lv_style_set_border_width(&style_ripple, LV_STATE_DEFAULT, 0);
-    // lv_style_set_outline_width(&style_ripple, LV_STATE_DEFAULT, 0);
-    // lv_style_set_transform_width(&style_ripple, LV_STATE_DEFAULT, -20);
-    // lv_style_set_transform_height(&style_ripple, LV_STATE_DEFAULT, -20);
-    // lv_style_set_transform_width(&style_ripple, LV_STATE_PRESSED, 0);
-    // lv_style_set_transform_height(&style_ripple, LV_STATE_PRESSED, 0);
-
-    // lv_style_set_transition_path(&style_ripple, LV_STATE_DEFAULT, &path_ease_out);
-    // lv_style_set_transition_prop_1(&style_ripple, LV_STATE_DEFAULT, LV_STYLE_BG_OPA);
-    // lv_style_set_transition_prop_2(&style_ripple, LV_STATE_DEFAULT, LV_STYLE_TRANSFORM_WIDTH);
-    // lv_style_set_transition_prop_3(&style_ripple, LV_STATE_DEFAULT, LV_STYLE_TRANSFORM_HEIGHT);
-
-    // lv_obj_t * btn3 = lv_btn_create(status_tab, NULL);
-    // lv_obj_align(btn3, NULL, LV_ALIGN_CENTER, 0, 140);
-    // lv_obj_add_style(btn3, LV_BTN_PART_MAIN, &style_ripple);
-    // lv_obj_set_style_local_value_str(btn3, LV_BTN_PART_MAIN, LV_STATE_DEFAULT, "Ripple");
 
     label = lv_label_create(io_config_tab, NULL);
     lv_label_set_text(label, "Second tab");
@@ -153,3 +145,18 @@ void setup_gui(void) {
     label = lv_label_create(net_config_tab, NULL);
     lv_label_set_text(label, "Third tab");
 }
+
+#ifndef SIMULATOR
+
+void update_sensor_table_display() {
+    if (sensors.sensors.size() != lv_table_get_row_cnt(sensors.table)) {
+        lv_table_set_row_cnt(sensors.table, sensors.sensors.size());
+    }
+    for (int i = 0; i < sensors.sensors.size(); i++) {
+        lv_table_set_cell_value(sensors.table, i, 0, sensors.sensors[i].name.c_str());
+        lv_table_set_cell_value(sensors.table, i, 1, std::to_string(sensors.sensors[i].value).c_str());
+    }
+
+}
+
+#endif

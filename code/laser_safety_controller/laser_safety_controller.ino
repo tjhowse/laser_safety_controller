@@ -86,14 +86,32 @@ void setup()
     indev_drv.type = LV_INDEV_TYPE_POINTER;
     indev_drv.read_cb = my_touchpad_read;
     lv_indev_drv_register(&indev_drv);
-
+    Serial.println("Setting up gui");
     setup_gui();
+
+    // ledcDetachPin(SPEAKER_PIN);
+    // pinMode(SPEAKER_PIN, INPUT);
+
+    Serial.println("Discovering new sensors");
+    // pinMode(G27, INPUT);
+    sensors.discover_new_sensors_on_bus(19);
+    Serial.println("Updating sensors");
+    sensors.update();
+    // update_sensor_table_display();
+    pinMode(G27, OUTPUT);
+    digitalWrite(G27, HIGH);
+    delay(1000);
+    digitalWrite(G27, LOW);
+    delay(1000);
+    digitalWrite(G27, HIGH);
 
 }
 
 
 void loop()
 {
+  // dacWrite (25,0);
+  update_sensor_table_display();
   lv_task_handler(); /* let the GUI do its work */
   delay(5);
 }
