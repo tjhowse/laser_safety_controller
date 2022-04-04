@@ -41,26 +41,26 @@ class OneWireBus {
             dt.setOneWire(&ow);
             dt.begin();
             // dt.begin();
-            dt.requestTemperatures();
-            float tempC = dt.getTempCByIndex(0);
-            DeviceAddress address;
-            if (dt.getAddress(address, 0)) {
-                for (uint8_t j=0; j<8; j++) {
-                    Serial.print(address[j], HEX);
-                    Serial.print(" ");
-                }
-            }
+            // dt.requestTemperatures();
+            // float tempC = dt.getTempCByIndex(0);
+            // DeviceAddress address;
+            // if (dt.getAddress(address, 0)) {
+            //     for (uint8_t j=0; j<8; j++) {
+            //         Serial.print(address[j], HEX);
+            //         Serial.print(" ");
+            //     }
+            // }
 
-            // Check if reading was successful
-            if(tempC != DEVICE_DISCONNECTED_C)
-            {
-                Serial.print("Temperature for the device 1 (index 0) is: ");
-                Serial.println(tempC);
-            }
-            else
-            {
-                Serial.println("Error: Could not read temperature data");
-            }
+            // // Check if reading was successful
+            // if(tempC != DEVICE_DISCONNECTED_C)
+            // {
+            //     Serial.print("Temperature for the device 1 (index 0) is: ");
+            //     Serial.println(tempC);
+            // }
+            // else
+            // {
+            //     Serial.println("Error: Could not read temperature data");
+            // }
             // dt.begin();
             // this->dt.begin();
         };
