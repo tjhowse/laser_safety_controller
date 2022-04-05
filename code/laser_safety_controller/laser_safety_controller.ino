@@ -10,13 +10,12 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
+#define TABLE_UPDATE_INTERVAL_MS 500
 
 TFT_eSPI tft = TFT_eSPI(); /* TFT instance */
 static lv_disp_buf_t disp_buf;
 static lv_color_t buf[LV_HOR_RES_MAX * 10];
 
-#define ONEWIRE_PIN 19
-#define TABLE_UPDATE_INTERVAL_MS 500
 
 OneWire oneWire(ONEWIRE_PIN);
 DallasTemperature dallas(&oneWire);
@@ -105,20 +104,20 @@ void setup()
     // TODO fix this silly way of defining addresses.
     {
       DeviceAddress newAddress = {0x28,0xED,0xA2,0x79,0x97,0x14,0x3,0x91};
-      sensors.add_sensor("Coolant Resevoir", 19, newAddress, SENSOR_TYPE_ONEWIRE);
+      sensors.add_onewire_sensor("Coolant Resevoir", newAddress);
       sensors.sensors.back().set_thresholds(1,5,20,30);
+      sensors.sensors.back().set_alarm_pin(27);
+
     }
     {
       DeviceAddress newAddress = {0x28,0x37,0x43,0x79,0x97,0x14,0x3,0x8D};
-      sensors.add_sensor("Compressor", 19, newAddress, SENSOR_TYPE_ONEWIRE);
+      sensors.add_onewire_sensor("Compressor", newAddress);
       sensors.sensors.back().set_thresholds(1,5,50,60);
     }
     sensors.discover_new_sensors_on_bus();
     sensors.update();
     update_sensor_table_display();
-
 }
-
 
 void loop()
 {

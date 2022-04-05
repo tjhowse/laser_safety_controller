@@ -15,6 +15,8 @@
 
 #define ARDUINO 10813 // This tells imported libraries that we're running on a post-1.0 version of arduino.
 
+#define ONEWIRE_PIN 19
+
 #include <memory>
 #include <ctype.h>
 #include <string>
@@ -40,10 +42,15 @@ class Sensor {
         int thresholds[4] = {1, 10, 50, 80};
         uint8_t state = SENSOR_STATE_NORMAL;
         bool read_error = false;
+        uint8_t alarm_pin = 0;
+
 
         Sensor(std::string name, uint8_t pin, DeviceAddress address, uint8_t type);
         void update();
         void set_thresholds(int alarm_low, int warn_low, int warn_high, int alarm_high);
+        void set_alarm_pin(uint8_t pin);
+
+        std::string get_printable();
 
 };
 
@@ -53,7 +60,8 @@ class Sensors {
         lv_obj_t *table;
         DallasTemperature* dt_bus;
 
-        void add_sensor(std::string name, uint8_t pin, DeviceAddress address, uint8_t type);
+        void add_onewire_sensor(std::string name, DeviceAddress address);
+        void add_digital_sensor(std::string name, uint8_t pin);
 
         void register_table(lv_obj_t *new_table) {
             table = new_table;

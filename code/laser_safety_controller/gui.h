@@ -148,31 +148,33 @@ void setup_gui(void) {
 
 #ifndef SIMULATOR
 
+void set_sensor_table_row(int row, std::string name, std::string value, lv_state_t state) {
+    lv_table_set_cell_value(sensors.table, row, 0, name.c_str());
+    lv_table_set_cell_value(sensors.table, row, 1, value.c_str());
+    lv_table_set_cell_type(sensors.table, row, 0, state);
+    lv_table_set_cell_type(sensors.table, row, 1, state);
+}
+
 void update_sensor_table_display() {
-    char buffer[128];
     if (sensors.sensors.size() != lv_table_get_row_cnt(sensors.table)) {
         lv_table_set_row_cnt(sensors.table, sensors.sensors.size());
     }
+    int row = 0;
     for (int i = 0; i < sensors.sensors.size(); i++) {
-        lv_table_set_cell_value(sensors.table, i, 0, sensors.sensors[i].name.c_str());
-        sprintf(buffer, "%0.1f", sensors.sensors[i].value);
-        lv_table_set_cell_value(sensors.table, i, 1, buffer);
-        switch (sensors.sensors[i].state) {
-            case SENSOR_STATE_ALARM:
-                lv_table_set_cell_type(sensors.table, i, 0, LV_TABLE_CELL_RED);
-                lv_table_set_cell_type(sensors.table, i, 1, LV_TABLE_CELL_RED);
-                break;
-            case SENSOR_STATE_WARN:
-                lv_table_set_cell_type(sensors.table, i, 0, LV_TABLE_CELL_YELLOW);
-                lv_table_set_cell_type(sensors.table, i, 1, LV_TABLE_CELL_YELLOW);
-                break;
-            case SENSOR_STATE_NORMAL:
-                lv_table_set_cell_type(sensors.table, i, 0, LV_STATE_DEFAULT);
-                lv_table_set_cell_type(sensors.table, i, 1, LV_STATE_DEFAULT);
-                break;
+        if (sensors.sensors[i].state == SENSOR_STATE_ALARM) {
+            set_sensor_table_row(row++, sensors.sensors[i].name, sensors.sensors[i].get_printable(), LV_TABLE_CELL_RED);
         }
     }
-
+    for (int i = 0; i < sensors.sensors.size(); i++) {
+        if (sensors.sensors[i].state == SENSOR_STATE_WARN) {
+            set_sensor_table_row(row++, sensors.sensors[i].name, sensors.sensors[i].get_printable(), LV_TABLE_CELL_YELLOW);
+        }
+    }
+    for (int i = 0; i < sensors.sensors.size(); i++) {
+        if (sensors.sensors[i].state == SENSOR_STATE_NORMAL) {
+            set_sensor_table_row(row++, sensors.sensors[i].name, sensors.sensors[i].get_printable(), LV_STATE_DEFAULT);
+        }
+    }
 }
 
 #endif

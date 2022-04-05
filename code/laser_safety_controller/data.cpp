@@ -52,16 +52,16 @@ void Sensors::discover_new_sensors_on_bus() {
             }
             Serial.println("}");
             Serial.println("Add this to the setup function.");
+            add_onewire_sensor("Unknown", address);
+
         }
     }
 }
 
-void Sensors::add_sensor(std::string name, uint8_t pin, DeviceAddress address, uint8_t type) {
-    Sensor sensor(name, pin, address, type);
+void Sensors::add_onewire_sensor(std::string name, DeviceAddress address) {
+    Sensor sensor(name, ONEWIRE_PIN, address, SENSOR_TYPE_ONEWIRE);
 
-    if (type == SENSOR_TYPE_ONEWIRE) {
-        sensor.dt_bus = dt_bus;
-    }
+    sensor.dt_bus = dt_bus;
 
     // I think this copies the object. I also think I hate C++.
     sensors.push_back(sensor);
@@ -128,4 +128,39 @@ void Sensor::update() {
             state = SENSOR_STATE_NORMAL;
         }
     }
+    if (alarm_pin != 0) {
+        if ((state == SENSOR_STATE_ALARM) && digitalRead(alarm_pin) == LOW) {
+            digitalWrite(alarm_pin, HIGH);
+        } else if ((state == SENSOR_STATE_NORMAL) && digitalRead(alarm_pin) == HIGH) {
+            digitalWrite(alarm_pin, LOW);
+        }
+    }
+}
+
+std::string Sensor::get_printable() {
+    switch(type) {
+        case SENSOR_TYPE_DIGITAL:
+            if (value) {
+                return "On";
+            } else {
+                return "Off";
+            }
+            break;
+        case SENSOR_TYPE_ANALOG:
+            return std::to_string(value);
+            break;
+        case SENSOR_TYPE_ONEWIRE:
+            char buffer[32];
+            sprintf(buffer, "%0.1f ºC", value);
+            return std::string(buffer);
+            break;
+        default:
+            return "Unknown";
+            break;
+    }
+}
+
+void Sensor::set_alarm_pin(uint8_t pin) {
+    alarm_pin = pin;
+    pinMode(pin, OUTPUT);
 }
