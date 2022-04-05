@@ -1,5 +1,9 @@
 #include "data.h"
 
+Sensors::Sensors(DallasTemperature* dt_bus) {
+    this->dt_bus = dt_bus;
+}
+
 void Sensors::update_table(void) {
     // Iterate over the sensors and update the values displayed in the table.
     // for (Sensor s : sensors) {
@@ -9,85 +13,57 @@ void Sensors::update_table(void) {
 
 void Sensors::update_values() {
     // Iterate over the sensors and update their values.
-
-    Serial.println("About to request temperatures");
-    // for (auto b : busses) {
-    for (int i = 0; i < busses.size(); i++) {
-        busses[i]->dt.requestTemperatures();
-    }
-
-    Serial.println("About to update sensors");
-    for (Sensor s : sensors) {
-        s.update();
+    dt_bus->requestTemperatures();
+    for (int i = 0; i < sensors.size(); i++) {
+        sensors[i].update();
     }
 }
 
-void Sensors::discover_new_sensors_on_bus(uint8_t pin) {
+void Sensors::discover_new_sensors_on_bus() {
     // Scan the onewire bus report any found sensors.
-    auto bus = &(busses[get_onewire_bus_index(pin)]->dt);
-    std::vector<uint8_t> indicies;
     Serial.println("Scanning bus");
 
-    bus->requestTemperatures();
-    uint8_t deviceCount=bus->getDeviceCount();
+    dt_bus->requestTemperatures();
+    uint8_t deviceCount=dt_bus->getDeviceCount();
     Serial.print("Found this many sensors: ");
     Serial.println(deviceCount);
     for (uint8_t i=0; i<deviceCount; i++) {
         DeviceAddress address;
-        float tempC = bus->getTempCByIndex(i);
-        Serial.println(tempC);
-        if (bus->getAddress(address, i)) {
-            Serial.print("Found sensor at address: ");
-            for (uint8_t j=0; j<8; j++) {
-                Serial.print(address[j], HEX);
-                Serial.print(" ");
-            }
-            Serial.println();
-        } else {
-            Serial.print("Couldn't read address of sensor at index ");
-            Serial.println(i);
+        if (!dt_bus->getAddress(address, i)) {
+            Serial.print("Detected a sensor on the OneWire bus but couldn't read it, for some reason.");
         }
 
         bool new_sensor = true;
-        for (auto s : sensors) {
-            if (s.pin != pin) continue;
-            if (s.bus_index == i) {
-                // We already have this sensor
+        for (int j = 0; j < sensors.size(); j++) {
+            if (memcmp(sensors[j].address, address, 8) == 0) {
                 new_sensor = false;
-                continue;
+                break;
             }
         }
         if (new_sensor) {
             // We don't have this sensor yet, add it
-            Serial.print("Found new sensor on pin ");
-            Serial.print(pin);
-            Serial.print(" at index ");
-            Serial.print(i);
-            Serial.println();
-            Serial.print(" on bus ");
-            Serial.println((uint32_t)bus);
-            add_sensor("New Sensor", pin, i, SENSOR_TYPE_ONEWIRE);
+            Serial.print("Found new sensor with address: {");
+            for (uint8_t j=0; j<8; j++) {
+                Serial.print("0x");
+                Serial.print(address[j], HEX);
+                if (j < 7) {
+                    Serial.print(",");
+                }
+            }
+            Serial.println("}");
+            Serial.println("Add this to the setup function.");
         }
     }
 }
 
-uint8_t Sensors::get_onewire_bus_index(uint8_t pin) {
-    for (uint8_t i=0; i<busses.size(); i++) {
-        if (busses[i]->pin == pin) {
-            return i;
-        }
-    }
-    busses.push_back(std::unique_ptr<OneWireBus>(new OneWireBus(pin)));
-    return busses.size()-1;
-}
-
-void Sensors::add_sensor(std::string name, uint8_t pin, uint8_t index, uint8_t type) {
-    Sensor sensor(name, pin, index, type);
+void Sensors::add_sensor(std::string name, uint8_t pin, DeviceAddress address, uint8_t type) {
+    Sensor sensor(name, pin, address, type);
 
     if (type == SENSOR_TYPE_ONEWIRE) {
-        sensor.dt_bus = &(busses[get_onewire_bus_index(pin)]->dt);
+        sensor.dt_bus = dt_bus;
     }
 
+    // I think this copies the object. I also think I hate C++.
     sensors.push_back(sensor);
 }
 
@@ -97,11 +73,11 @@ void Sensors::update() {
     update_values();
 }
 
-Sensor::Sensor(std::string name, uint8_t pin, uint8_t index, uint8_t type)
+Sensor::Sensor(std::string name, uint8_t pin, DeviceAddress address, uint8_t type)
 {
     this->name = name;
     this->pin = pin;
-    this->bus_index = index;
+    memcpy(this->address, address, 8);
     this->type = type;
     if (type == SENSOR_TYPE_DIGITAL) {
         pinMode(pin, INPUT);
@@ -110,40 +86,46 @@ Sensor::Sensor(std::string name, uint8_t pin, uint8_t index, uint8_t type)
     }
 }
 
+void Sensor::set_thresholds(int alarm_low, int warn_low, int warn_high, int alarm_high) {
+    thresholds[SENSOR_STATE_ALARM_LOW_INDEX] = alarm_low;
+    thresholds[SENSOR_STATE_WARN_LOW_INDEX] = warn_low;
+    thresholds[SENSOR_STATE_WARN_HIGH_INDEX] = warn_high;
+    thresholds[SENSOR_STATE_ALARM_HIGH_INDEX] = alarm_high;
+}
+
 void Sensor::update() {
     switch (type) {
         case SENSOR_TYPE_DIGITAL:
             Serial.println("Updating digital sensor");
             value = digitalRead(pin);
+            read_error = false;
             break;
         case SENSOR_TYPE_ANALOG:
             Serial.println("Updating analogue sensor");
             value = analogRead(pin);
+            read_error = false;
             break;
         case SENSOR_TYPE_ONEWIRE:
-            // TODO Handle an error state if this sensor isn't visible
-            // on this bus anymore
-            Serial.print("Updating onewire sensor on bus ");
-            Serial.println((uint32_t)dt_bus);
-            Serial.print(" at address ");
-            Serial.print(bus_index);
-            Serial.println();
-            value = dt_bus->getTempCByIndex(bus_index);
-            Serial.print("Sensor value: ");
-            Serial.println(value);
+            value = dt_bus->getTempC(address);
+            read_error = (value == DEVICE_DISCONNECTED_C);
             break;
         default:
             break;
     }
-    if (value < thresholds[SENSOR_STATE_ALARM_LOW_INDEX]) {
-        state = SENSOR_STATE_ALARM;
-    } else if (value < thresholds[SENSOR_STATE_WARN_LOW_INDEX]) {
-        state = SENSOR_STATE_WARN;
-    } else if (value > thresholds[SENSOR_STATE_WARN_HIGH_INDEX]) {
-        state = SENSOR_STATE_WARN;
-    } else if (value > thresholds[SENSOR_STATE_ALARM_HIGH_INDEX]) {
+
+    if (read_error) {
         state = SENSOR_STATE_ALARM;
     } else {
-        state = SENSOR_STATE_NORMAL;
+        if (value < thresholds[SENSOR_STATE_ALARM_LOW_INDEX]) {
+            state = SENSOR_STATE_ALARM;
+        } else if (value < thresholds[SENSOR_STATE_WARN_LOW_INDEX]) {
+            state = SENSOR_STATE_WARN;
+        } else if (value > thresholds[SENSOR_STATE_ALARM_HIGH_INDEX]) {
+            state = SENSOR_STATE_ALARM;
+        } else if (value > thresholds[SENSOR_STATE_WARN_HIGH_INDEX]) {
+            state = SENSOR_STATE_WARN;
+        } else {
+            state = SENSOR_STATE_NORMAL;
+        }
     }
 }

@@ -7,13 +7,22 @@
 #include <SPI.h>
 // #include "touch.h"
 #include "data.h"
+#include <OneWire.h>
+#include <DallasTemperature.h>
 
 
 TFT_eSPI tft = TFT_eSPI(); /* TFT instance */
 static lv_disp_buf_t disp_buf;
 static lv_color_t buf[LV_HOR_RES_MAX * 10];
 
-Sensors sensors;
+#define ONEWIRE_PIN 19
+#define TABLE_UPDATE_INTERVAL_MS 500
+
+OneWire oneWire(ONEWIRE_PIN);
+DallasTemperature dallas(&oneWire);
+Sensors sensors(&dallas);
+
+unsigned long table_update_deadline_ms;
 
 #include "gui.h"
 
@@ -89,80 +98,37 @@ void setup()
     Serial.println("Setting up gui");
     setup_gui();
 
-    // ledcDetachPin(SPEAKER_PIN);
-    // pinMode(SPEAKER_PIN, INPUT);
+    dallas.begin();
+    dallas.begin();
 
-    Serial.println("Discovering new sensors");
-
-//   OneWire oneWire;
-//   oneWire.begin(19);
-
-// // Pass our oneWire reference to Dallas Temperature.
-// DallasTemperature sensors;
-// sensors.setOneWire(&oneWire);
-//   sensors.begin();
-// Serial.print("Requesting temperatures...");
-//   sensors.requestTemperatures(); // Send the command to get temperatures
-//   Serial.println("DONE");
-//   // After we got the temperatures, we can print them here.
-//   // We use the function ByIndex, and as an example get the temperature from the first sensor only.
-//   float tempC = sensors.getTempCByIndex(0);
-//   DeviceAddress address;
-//   if (sensors.getAddress(address, 0)) {
-//       for (uint8_t j=0; j<8; j++) {
-//         Serial.print(address[j], HEX);
-//         Serial.print(" ");
-//     }
-//   }
-
-//   // Check if reading was successful
-//   if(tempC != DEVICE_DISCONNECTED_C)
-//   {
-//     Serial.print("Temperature for the device 1 (index 0) is: ");
-//     Serial.println(tempC);
-//   }
-//   else
-//   {
-//     Serial.println("Error: Could not read temperature data");
-//   }
-    // pinMode(G27, INPUT);
-
-
-
-
-
-
-
-
-    sensors.discover_new_sensors_on_bus(19);
-    delay(1000);
-    Serial.println("Updating sensors");
+    // Here is where we define all the sensors we know and care about
+    // TODO fix this silly way of defining addresses.
+    {
+      DeviceAddress newAddress = {0x28,0xED,0xA2,0x79,0x97,0x14,0x3,0x91};
+      sensors.add_sensor("Coolant Resevoir", 19, newAddress, SENSOR_TYPE_ONEWIRE);
+      sensors.sensors.back().set_thresholds(1,5,20,30);
+    }
+    {
+      DeviceAddress newAddress = {0x28,0x37,0x43,0x79,0x97,0x14,0x3,0x8D};
+      sensors.add_sensor("Compressor", 19, newAddress, SENSOR_TYPE_ONEWIRE);
+      sensors.sensors.back().set_thresholds(1,5,50,60);
+    }
+    sensors.discover_new_sensors_on_bus();
     sensors.update();
-
-
-
-
-
-    // delay(1000);
-    // sensors.update();
-    // delay(1000);
-    // sensors.update();
-    // update_sensor_table_display();
-    pinMode(G27, OUTPUT);
-    digitalWrite(G27, HIGH);
-    delay(1000);
-    digitalWrite(G27, LOW);
-    delay(1000);
-    digitalWrite(G27, HIGH);
+    update_sensor_table_display();
 
 }
 
 
 void loop()
 {
-  // dacWrite (25,0);
-  // sensors.update();
-  // update_sensor_table_display();
+  sensors.update();
   lv_task_handler(); /* let the GUI do its work */
+
+  if (table_update_deadline_ms < millis()) {
+    update_sensor_table_display();
+    table_update_deadline_ms = millis() + TABLE_UPDATE_INTERVAL_MS;
+  }
+
   delay(5);
 }
