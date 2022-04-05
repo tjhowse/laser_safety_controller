@@ -15,6 +15,7 @@
 
 #define ARDUINO 10813 // This tells imported libraries that we're running on a post-1.0 version of arduino.
 
+#include <memory>
 #include <ctype.h>
 #include <string>
 #include <vector>
@@ -86,7 +87,7 @@ class Sensors {
     public:
         std::vector<Sensor> sensors;
         lv_obj_t *table;
-        std::vector<OneWireBus> busses;
+        std::vector<std::unique_ptr<OneWireBus>> busses;
 
         void add_sensor(std::string name, uint8_t pin, uint8_t index, uint8_t type);
 

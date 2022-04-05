@@ -11,8 +11,9 @@ void Sensors::update_values() {
     // Iterate over the sensors and update their values.
 
     Serial.println("About to request temperatures");
-    for (auto b : busses) {
-        b.dt.requestTemperatures();
+    // for (auto b : busses) {
+    for (int i = 0; i < busses.size(); i++) {
+        busses[i]->dt.requestTemperatures();
     }
 
     Serial.println("About to update sensors");
@@ -23,7 +24,7 @@ void Sensors::update_values() {
 
 void Sensors::discover_new_sensors_on_bus(uint8_t pin) {
     // Scan the onewire bus report any found sensors.
-    auto bus = &(busses[get_onewire_bus_index(pin)].dt);
+    auto bus = &(busses[get_onewire_bus_index(pin)]->dt);
     std::vector<uint8_t> indicies;
     Serial.println("Scanning bus");
 
@@ -72,12 +73,11 @@ void Sensors::discover_new_sensors_on_bus(uint8_t pin) {
 
 uint8_t Sensors::get_onewire_bus_index(uint8_t pin) {
     for (uint8_t i=0; i<busses.size(); i++) {
-        if (busses[i].pin == pin) {
+        if (busses[i]->pin == pin) {
             return i;
         }
     }
-    // This is not doing what I intend
-    busses.push_back(OneWireBus(pin));
+    busses.push_back(std::unique_ptr<OneWireBus>(new OneWireBus(pin)));
     return busses.size()-1;
 }
 
@@ -85,7 +85,7 @@ void Sensors::add_sensor(std::string name, uint8_t pin, uint8_t index, uint8_t t
     Sensor sensor(name, pin, index, type);
 
     if (type == SENSOR_TYPE_ONEWIRE) {
-        sensor.dt_bus = &(busses[get_onewire_bus_index(pin)].dt);
+        sensor.dt_bus = &(busses[get_onewire_bus_index(pin)]->dt);
     }
 
     sensors.push_back(sensor);
