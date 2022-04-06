@@ -111,9 +111,19 @@ void setup()
     }
     {
       DeviceAddress newAddress = {0x28,0x37,0x43,0x79,0x97,0x14,0x3,0x8D};
-      sensors.add_onewire_sensor("Compressor", newAddress);
+      sensors.add_onewire_sensor("Compressor 1", newAddress);
       sensors.sensors.back().set_thresholds(1,5,50,60);
     }
+    {
+      DeviceAddress newAddress = {0x28,0x16,0xA2,0x79,0x97,0x14,0x3,0x1B};
+      sensors.add_onewire_sensor("Compressor 2", newAddress);
+      sensors.sensors.back().set_thresholds(1,5,50,60);
+    }
+    // {
+    //   DeviceAddress newAddress = {0x28,0xFF,0x68,0x3E,0x82,0x16,0x5,0x6E};
+    //   sensors.add_onewire_sensor("Ambient", newAddress);
+    //   sensors.sensors.back().set_thresholds(1,5,30,60);
+    // }
     sensors.discover_new_sensors_on_bus();
     sensors.update();
     update_sensor_table_display();

@@ -54,17 +54,30 @@ class Sensor {
 
 };
 
+class myDeviceAddress {
+    public:
+        DeviceAddress a;
+        myDeviceAddress(DeviceAddress b) {
+            memcpy(a, b, 8);
+        }
+};
+
 class Sensors {
     public:
         std::vector<Sensor> sensors;
         lv_obj_t *table;
+        lv_obj_t *unassigned_table;
         DallasTemperature* dt_bus;
+        std::vector<myDeviceAddress> unassigned_addresses;
 
         void add_onewire_sensor(std::string name, DeviceAddress address);
         void add_digital_sensor(std::string name, uint8_t pin);
 
         void register_table(lv_obj_t *new_table) {
             table = new_table;
+        };
+        void register_unassigned_table(lv_obj_t *new_table) {
+            unassigned_table = new_table;
         };
 
         Sensors(DallasTemperature* dt_bus);

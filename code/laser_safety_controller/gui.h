@@ -36,6 +36,16 @@ void setup_gui(void) {
     lv_obj_t *io_config_tab = lv_tabview_add_tab(tabview, "IO Config");
     lv_obj_t *net_config_tab = lv_tabview_add_tab(tabview, "Net Config");
 
+
+    lv_obj_t *unassigned_sensors_label = lv_label_create(io_config_tab, NULL);
+    lv_label_set_text(unassigned_sensors_label, "Unassigned Sensors");
+    lv_obj_t *unassigned_sensors_table = lv_table_create(io_config_tab, NULL);
+    lv_obj_align(unassigned_sensors_table, unassigned_sensors_label, LV_ALIGN_OUT_BOTTOM_LEFT , 10, 10);
+    lv_table_set_col_cnt(unassigned_sensors_table, 1);
+    lv_table_set_row_cnt(unassigned_sensors_table, 2);
+    lv_obj_set_click(unassigned_sensors_table, false);
+    lv_table_set_col_width(unassigned_sensors_table, 0, 260);
+
     lv_obj_t *sensors_table = lv_table_create(status_tab, NULL);
     lv_obj_set_click(sensors_table, false);
     // LV_TABLE_PART_BG
@@ -43,6 +53,7 @@ void setup_gui(void) {
 
 #ifndef SIMULATOR
     sensors.register_table(sensors_table);
+    sensors.register_unassigned_table(unassigned_sensors_table);
 #endif
 
     /*Add content to the tabs*/
@@ -138,12 +149,23 @@ void setup_gui(void) {
         lv_table_set_cell_align(sensors_table, i, 1, LV_LABEL_ALIGN_LEFT);
     }
 
-
-    label = lv_label_create(io_config_tab, NULL);
-    lv_label_set_text(label, "Second tab");
-
     label = lv_label_create(net_config_tab, NULL);
     lv_label_set_text(label, "Third tab");
+
+    uint8_t test_addresses[2][8] = {  {0x28,0x16,0xA2,0x79,0x97,0x14,0x3,0x1B},
+                                      {0x28,0xFF,0x68,0x3E,0x82,0x16,0x5,0x6E}};
+
+    char buffer[32];
+    buffer[0] = '{';
+    for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 8; j++) {
+            // May god have mercy on my soul.
+            sprintf(buffer+j*3+1, "%02X,", test_addresses[i][j]);
+        }
+        buffer[24] = '}';
+        buffer[25] = '\0';
+        lv_table_set_cell_value(unassigned_sensors_table, i, 0, buffer);
+    }
 }
 
 #ifndef SIMULATOR
@@ -156,25 +178,68 @@ void set_sensor_table_row(int row, std::string name, std::string value, lv_state
 }
 
 void update_sensor_table_display() {
+    enum colour{white,yellow,red} bg_colour;
+    bg_colour = white;
+    // uint8_t bg_colour = 0; // 0 - white, 1 -
     if (sensors.sensors.size() != lv_table_get_row_cnt(sensors.table)) {
         lv_table_set_row_cnt(sensors.table, sensors.sensors.size());
     }
     int row = 0;
+
     for (int i = 0; i < sensors.sensors.size(); i++) {
         if (sensors.sensors[i].state == SENSOR_STATE_ALARM) {
+            bg_colour = red;
             set_sensor_table_row(row++, sensors.sensors[i].name, sensors.sensors[i].get_printable(), LV_TABLE_CELL_RED);
         }
     }
     for (int i = 0; i < sensors.sensors.size(); i++) {
         if (sensors.sensors[i].state == SENSOR_STATE_WARN) {
+            if (bg_colour == white) {
+                bg_colour = yellow;
+            }
             set_sensor_table_row(row++, sensors.sensors[i].name, sensors.sensors[i].get_printable(), LV_TABLE_CELL_YELLOW);
         }
     }
     for (int i = 0; i < sensors.sensors.size(); i++) {
         if (sensors.sensors[i].state == SENSOR_STATE_NORMAL) {
-            set_sensor_table_row(row++, sensors.sensors[i].name, sensors.sensors[i].get_printable(), LV_STATE_DEFAULT);
+            set_sensor_table_row(row++, sensors.sensors[i].name, sensors.sensors[i].get_printable(), LV_TABLE_CELL_GREY);
         }
     }
+
+    // TODO this is not getting the right object for some reason.
+
+    lv_obj_t *tabview = lv_obj_get_parent(lv_obj_get_parent(lv_obj_get_parent(sensors.table)));
+    // table -> tabview_page -> tabview_background -> tabview???
+
+    switch (bg_colour) {
+        case red:
+            lv_obj_set_style_local_bg_color(tabview, LV_TABVIEW_PART_BG, LV_STATE_DEFAULT, LV_COLOR_RED);
+            break;
+        case yellow:
+            lv_obj_set_style_local_bg_color(tabview, LV_TABVIEW_PART_BG, LV_STATE_DEFAULT, LV_COLOR_YELLOW);
+            break;
+        case white:
+            lv_obj_set_style_local_bg_color(tabview, LV_TABVIEW_PART_BG, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+            break;
+    }
+    // lv_obj_set_style_local_bg_color(tabview, LV_TABVIEW_PART_BG, LV_STATE_DEFAULT, bg_colour);
+
+    // This is busted in a nasty w
+    if (sensors.unassigned_addresses.size() != lv_table_get_row_cnt(sensors.unassigned_table)) {
+        lv_table_set_row_cnt(sensors.unassigned_table, sensors.unassigned_addresses.size());
+        char buffer[32];
+        buffer[0] = '{';
+        for (int i = 0; i < sensors.unassigned_addresses.size(); i++) {
+            for (int j = 0; j < 8; j++) {
+                // May god have mercy on my soul.
+                sprintf(buffer+j*3+1, "%02X,", sensors.unassigned_addresses[i].a[j]);
+            }
+            buffer[24] = '}';
+            buffer[25] = '\0';
+            lv_table_set_cell_value(sensors.unassigned_table, i, 0, buffer);
+        }
+    }
+
 }
 
 #endif

@@ -52,6 +52,7 @@ void Sensors::discover_new_sensors_on_bus() {
             }
             Serial.println("}");
             Serial.println("Add this to the setup function.");
+            unassigned_addresses.push_back(myDeviceAddress(address));
             add_onewire_sensor("Unknown", address);
 
         }
@@ -151,7 +152,7 @@ std::string Sensor::get_printable() {
             break;
         case SENSOR_TYPE_ONEWIRE:
             char buffer[32];
-            sprintf(buffer, "%0.1f ºC", value);
+            sprintf(buffer, "%0.1f degC", value);
             return std::string(buffer);
             break;
         default:
