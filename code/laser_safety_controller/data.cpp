@@ -30,7 +30,7 @@ void Sensors::discover_new_sensors_on_bus() {
     for (uint8_t i=0; i<deviceCount; i++) {
         DeviceAddress address;
         if (!dt_bus->getAddress(address, i)) {
-            Serial.print("Detected a sensor on the OneWire bus but couldn't read it, for some reason.");
+            Serial.println("Detected a sensor on the OneWire bus but couldn't read it, for some reason.");
         }
 
         bool new_sensor = true;
@@ -63,6 +63,14 @@ void Sensors::add_onewire_sensor(std::string name, DeviceAddress address) {
     Sensor sensor(name, ONEWIRE_PIN, address, SENSOR_TYPE_ONEWIRE);
 
     sensor.dt_bus = dt_bus;
+    sensor.set_unit("degC");
+
+    // I think this copies the object. I also think I hate C++.
+    sensors.push_back(sensor);
+}
+
+void Sensors::add_analogue_sensor(std::string name, uint8_t pin) {
+    Sensor sensor(name, pin, NULL, SENSOR_TYPE_ANALOGUE);
 
     // I think this copies the object. I also think I hate C++.
     sensors.push_back(sensor);
@@ -78,11 +86,13 @@ Sensor::Sensor(std::string name, uint8_t pin, DeviceAddress address, uint8_t typ
 {
     this->name = name;
     this->pin = pin;
-    memcpy(this->address, address, 8);
+    if (address != NULL) {
+        memcpy(this->address, address, 8);
+    }
     this->type = type;
     if (type == SENSOR_TYPE_DIGITAL) {
         pinMode(pin, INPUT);
-    } else if (type == SENSOR_TYPE_ANALOG) {
+    } else if (type == SENSOR_TYPE_ANALOGUE) {
         pinMode(pin, INPUT);
     }
 }
@@ -94,24 +104,25 @@ void Sensor::set_thresholds(int alarm_low, int warn_low, int warn_high, int alar
     thresholds[SENSOR_STATE_ALARM_HIGH_INDEX] = alarm_high;
 }
 
+void Sensor::set_unit(std::string new_unit) {
+    unit = new_unit;
+}
+
+
+void Sensor::set_scalar(float new_scalar) {
+    scalar = new_scalar;
+}
+
 void Sensor::update() {
-    switch (type) {
-        case SENSOR_TYPE_DIGITAL:
-            Serial.println("Updating digital sensor");
-            value = digitalRead(pin);
-            read_error = false;
-            break;
-        case SENSOR_TYPE_ANALOG:
-            Serial.println("Updating analogue sensor");
-            value = analogRead(pin);
-            read_error = false;
-            break;
-        case SENSOR_TYPE_ONEWIRE:
-            value = dt_bus->getTempC(address);
-            read_error = (value == DEVICE_DISCONNECTED_C);
-            break;
-        default:
-            break;
+    if (type == SENSOR_TYPE_DIGITAL ) {
+        value = digitalRead(pin);
+        read_error = false;
+    } else if (type == SENSOR_TYPE_ANALOGUE) {
+        value = analogRead(pin) * scalar;
+        read_error = false;
+    } else if (type == SENSOR_TYPE_ONEWIRE) {
+        value = dt_bus->getTempC(address);
+        read_error = (value == DEVICE_DISCONNECTED_C);
     }
 
     if (read_error) {
@@ -139,6 +150,7 @@ void Sensor::update() {
 }
 
 std::string Sensor::get_printable() {
+    char buffer[32];
     switch(type) {
         case SENSOR_TYPE_DIGITAL:
             if (value) {
@@ -147,12 +159,12 @@ std::string Sensor::get_printable() {
                 return "Off";
             }
             break;
-        case SENSOR_TYPE_ANALOG:
-            return std::to_string(value);
+        case SENSOR_TYPE_ANALOGUE:
+            sprintf(buffer, "%0.1f %s", value, unit.c_str());
+            return std::string(buffer);
             break;
         case SENSOR_TYPE_ONEWIRE:
-            char buffer[32];
-            sprintf(buffer, "%0.1f degC", value);
+            sprintf(buffer, "%0.1f %s", value, unit.c_str());
             return std::string(buffer);
             break;
         default:

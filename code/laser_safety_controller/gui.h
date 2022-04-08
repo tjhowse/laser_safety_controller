@@ -16,10 +16,11 @@
 
 #define MONITOR_HOR_RES LV_HOR_RES
 #define MONITOR_VER_RES LV_VER_RES
+lv_obj_t *tabview;
 
 void setup_gui(void) {
     /*Create a Tab view object*/
-    lv_obj_t *tabview;
+
     tabview = lv_tabview_create(lv_scr_act(), NULL);
     // Reduce the margin around the tab titles
     lv_obj_set_style_local_pad_top(
@@ -208,7 +209,7 @@ void update_sensor_table_display() {
 
     // TODO this is not getting the right object for some reason.
 
-    lv_obj_t *tabview = lv_obj_get_parent(lv_obj_get_parent(lv_obj_get_parent(sensors.table)));
+    // lv_obj_t *tabview = lv_obj_get_parent(lv_obj_get_parent(lv_obj_get_parent(sensors.table)));
     // table -> tabview_page -> tabview_background -> tabview???
 
     switch (bg_colour) {

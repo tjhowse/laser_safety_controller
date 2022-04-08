@@ -100,6 +100,7 @@ void setup()
     dallas.begin();
     dallas.begin();
 
+    Serial.println("Setting up sensors");
     // Here is where we define all the sensors we know and care about
     // TODO fix this silly way of defining addresses.
     {
@@ -107,7 +108,6 @@ void setup()
       sensors.add_onewire_sensor("Coolant Resevoir", newAddress);
       sensors.sensors.back().set_thresholds(1,5,20,30);
       sensors.sensors.back().set_alarm_pin(27);
-
     }
     {
       DeviceAddress newAddress = {0x28,0x37,0x43,0x79,0x97,0x14,0x3,0x8D};
@@ -120,6 +120,12 @@ void setup()
       sensors.sensors.back().set_thresholds(1,5,50,60);
     }
     // {
+    //   sensors.add_analogue_sensor("Compressor Current", 35);
+    //   sensors.sensors.back().set_thresholds(0,0,8,12);
+    //   sensors.sensors.back().set_unit("Amps");
+    //   sensors.sensors.back().set_scalar(0.01);
+    // }
+    // {
     //   DeviceAddress newAddress = {0x28,0xFF,0x68,0x3E,0x82,0x16,0x5,0x6E};
     //   sensors.add_onewire_sensor("Ambient", newAddress);
     //   sensors.sensors.back().set_thresholds(1,5,30,60);
@@ -127,6 +133,7 @@ void setup()
     sensors.discover_new_sensors_on_bus();
     sensors.update();
     update_sensor_table_display();
+    Serial.println("All done setting up sensors.");
 }
 
 void loop()
