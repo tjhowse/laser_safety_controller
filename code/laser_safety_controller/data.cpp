@@ -59,6 +59,16 @@ void Sensors::discover_new_sensors_on_bus() {
     }
 }
 
+Sensor* Sensors::getSensorByName(std::string name) {
+    // Iterate over the sensors and return the one with the matching name.
+    for (int i = 0; i < sensors.size(); i++) {
+        if (sensors[i].name == name) {
+            return &sensors[i];
+        }
+    }
+    return NULL;
+}
+
 void Sensors::add_onewire_sensor(std::string name, DeviceAddress address) {
     Sensor sensor(name, ONEWIRE_PIN, address, SENSOR_TYPE_ONEWIRE);
 
@@ -76,10 +86,82 @@ void Sensors::add_analogue_sensor(std::string name, uint8_t pin) {
     sensors.push_back(sensor);
 }
 
+void Sensors::add_digital_sensor(std::string name, uint8_t pin) {
+    Sensor sensor(name, pin, NULL, SENSOR_TYPE_DIGITAL);
+
+    // I think this copies the object. I also think I hate C++.
+    sensors.push_back(sensor);
+}
+
+void Sensors::add_digital_output(std::string name, uint8_t pin) {
+    Sensor sensor(name, pin, NULL, SENSOR_TYPE_DIGITAL_OUTPUT);
+
+    // I think this copies the object. I also think I hate C++.
+    sensors.push_back(sensor);
+}
+
 
 void Sensors::update() {
     update_table();
     update_values();
+    update_logic();
+}
+
+void Sensors::update_logic() {
+    // This is handwritten logic to set up things like driving relay outputs
+    // on the basis of sensor states. It is very possible to build a structure
+    // around this, but it would be more complex than just writing things out here.
+
+    Sensor* reservoir = getSensorByName("Coolant Reservoir");
+    Sensor* compressor_control = getSensorByName("Compressor Control");
+    Sensor* compressor_1_temp = getSensorByName("Compressor 1");
+    Sensor* laser_control = getSensorByName("Laser Control");
+
+    if ((reservoir == NULL) ||
+        (compressor_control == NULL) ||
+        (compressor_1_temp == NULL) ||
+        (laser_control == NULL)) {
+        laser_control->set_value(0);
+        compressor_control->set_value(0);
+        Serial.println("Error: one or more sensors not found. Cannot run logic.");
+        // set_debug("Sensor null");
+        return;
+    }
+
+    if ((reservoir->state == error) ||
+        (compressor_1_temp->state == error)) {
+        laser_control->set_value(0);
+        compressor_control->set_value(0);
+        // set_debug("Sensor failsafe");
+        Serial.println("Error: Going failsafe, sensors unreadable.");
+        return;
+    }
+
+    // If the reservoir is not too cold, and the compressor is not too hot, run the compressor.
+    if ((reservoir->state >= normal) &&
+        (compressor_1_temp->state != error) &&
+        (reservoir->state >= normal) &&
+        (compressor_1_temp->state <= normal)) {
+        // if (compressor_control->value == 0) {
+        //     // We want to turn the compressor on, however it's off, so maybe we should
+        //     // wait for the temps to return to normal before turning back on.
+        //     if ((compressor_1_temp->state < high_warn) &&
+        //         (reservoir->state >= low_warn)){
+        //         compressor_control->set_value(1);
+        //     }
+        // }
+        // This hysteresis logic is going to take a bit more thought.
+        compressor_control->set_value(1);
+    } else {
+        compressor_control->set_value(0);
+    }
+
+    // If the reservoir is not too warm, turn the laser on.
+    if (reservoir->state <= normal) {
+        laser_control->set_value(1);
+    } else {
+        laser_control->set_value(0);
+    }
 }
 
 Sensor::Sensor(std::string name, uint8_t pin, DeviceAddress address, uint8_t type)
@@ -92,8 +174,12 @@ Sensor::Sensor(std::string name, uint8_t pin, DeviceAddress address, uint8_t typ
     this->type = type;
     if (type == SENSOR_TYPE_DIGITAL) {
         pinMode(pin, INPUT);
+        set_thresholds(-2,-1,2,3);
     } else if (type == SENSOR_TYPE_ANALOGUE) {
         pinMode(pin, INPUT);
+    } else if (type == SENSOR_TYPE_DIGITAL_OUTPUT) {
+        pinMode(pin, OUTPUT);
+        set_thresholds(-2,-1,2,3);
     }
 }
 
@@ -113,6 +199,18 @@ void Sensor::set_scalar(float new_scalar) {
     scalar = new_scalar;
 }
 
+void Sensor::set_value(float new_value) {
+    value = new_value;
+    if (type == SENSOR_TYPE_DIGITAL_OUTPUT) {
+        if (value > 0.5) {
+            // Active low outputs.
+            digitalWrite(pin, LOW);
+        } else {
+            digitalWrite(pin, HIGH);
+        }
+    }
+}
+
 void Sensor::update() {
     if (type == SENSOR_TYPE_DIGITAL ) {
         value = digitalRead(pin);
@@ -121,59 +219,57 @@ void Sensor::update() {
         value = analogRead(pin) * scalar;
         read_error = false;
     } else if (type == SENSOR_TYPE_ONEWIRE) {
+        float prev_value = value;
         value = dt_bus->getTempC(address);
-        read_error = (value == DEVICE_DISCONNECTED_C);
+        if (value == DEVICE_DISCONNECTED_C) {
+            value = prev_value;
+            read_error = true;
+        } else {
+            read_error = false;
+        }
+
     }
 
-    if (read_error) {
-        state = SENSOR_STATE_ALARM;
-    } else {
+    if (!read_error) {
+        error_deadline_ms = millis() + SENSOR_ERROR_TIMEOUT_MS;
         if (value < thresholds[SENSOR_STATE_ALARM_LOW_INDEX]) {
-            state = SENSOR_STATE_ALARM;
+            state = low_alarm;
         } else if (value < thresholds[SENSOR_STATE_WARN_LOW_INDEX]) {
-            state = SENSOR_STATE_WARN;
+            state = low_warn;
         } else if (value > thresholds[SENSOR_STATE_ALARM_HIGH_INDEX]) {
-            state = SENSOR_STATE_ALARM;
+            state = high_alarm;
         } else if (value > thresholds[SENSOR_STATE_WARN_HIGH_INDEX]) {
-            state = SENSOR_STATE_WARN;
+            state = high_warn;
         } else {
-            state = SENSOR_STATE_NORMAL;
+            state = normal;
         }
-    }
-    if (alarm_pin != 0) {
-        if ((state == SENSOR_STATE_ALARM) && digitalRead(alarm_pin) == LOW) {
-            digitalWrite(alarm_pin, HIGH);
-        } else if ((state == SENSOR_STATE_NORMAL) && digitalRead(alarm_pin) == HIGH) {
-            digitalWrite(alarm_pin, LOW);
+    } else {
+        if (millis() > error_deadline_ms) {
+            state = error;
         }
     }
 }
 
 std::string Sensor::get_printable() {
     char buffer[32];
-    switch(type) {
-        case SENSOR_TYPE_DIGITAL:
-            if (value) {
-                return "On";
-            } else {
-                return "Off";
-            }
-            break;
-        case SENSOR_TYPE_ANALOGUE:
-            sprintf(buffer, "%0.1f %s", value, unit.c_str());
-            return std::string(buffer);
-            break;
-        case SENSOR_TYPE_ONEWIRE:
-            sprintf(buffer, "%0.1f %s", value, unit.c_str());
-            return std::string(buffer);
-            break;
-        default:
-            return "Unknown";
-            break;
+    if (type == SENSOR_TYPE_DIGITAL) {
+        if (value) {
+            return "On";
+        } else {
+            return "Off";
+        }
+    } else if (type == SENSOR_TYPE_ANALOGUE) {
+        sprintf(buffer, "%0.1f %s", value, unit.c_str());
+        return std::string(buffer);
+    } else if (type == SENSOR_TYPE_ONEWIRE) {
+        sprintf(buffer, "%0.1f %s", value, unit.c_str());
+        return std::string(buffer);
+    } else if (type == SENSOR_TYPE_DIGITAL_OUTPUT) {
+        if (value) {
+            return "On";
+        } else {
+            return "Off";
+        }
     }
-}
-
-void Sensor::set_alarm_pin(uint8_t pin) {
-    alarm_pin = pin;
-    pinMode(pin, OUTPUT);
+    return "Unknown";
 }

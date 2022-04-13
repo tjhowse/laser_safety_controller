@@ -9,6 +9,7 @@
 #include "data.h"
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include "sound.h"
 
 #define TABLE_UPDATE_INTERVAL_MS 500
 
@@ -60,7 +61,9 @@ void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color
 
 void setup()
 {
-    M5.begin(true, true, true, true);
+    // Gotta turn off I2CEnable for pins 32 and 33 to work. ¯\_(ツ)_/¯
+    M5.begin(true, true, true, false);
+
     tft.begin(); /* TFT init */
     tft.setRotation(1);         /* Landscape orientation */
     M5.Axp.SetLcdVoltage(2800);
@@ -103,11 +106,11 @@ void setup()
     Serial.println("Setting up sensors");
     // Here is where we define all the sensors we know and care about
     // TODO fix this silly way of defining addresses.
+
     {
       DeviceAddress newAddress = {0x28,0xED,0xA2,0x79,0x97,0x14,0x3,0x91};
-      sensors.add_onewire_sensor("Coolant Resevoir", newAddress);
+      sensors.add_onewire_sensor("Coolant Reservoir", newAddress);
       sensors.sensors.back().set_thresholds(1,5,20,30);
-      sensors.sensors.back().set_alarm_pin(27);
     }
     {
       DeviceAddress newAddress = {0x28,0x37,0x43,0x79,0x97,0x14,0x3,0x8D};
@@ -118,6 +121,17 @@ void setup()
       DeviceAddress newAddress = {0x28,0x16,0xA2,0x79,0x97,0x14,0x3,0x1B};
       sensors.add_onewire_sensor("Compressor 2", newAddress);
       sensors.sensors.back().set_thresholds(1,5,50,60);
+    }
+    // The following pins are input-only:
+    //     ENSOR_VP (GPIO36), SENSOR_CAPP (GPIO37),
+    // SENSOR_CAPN (GPIO38), SENSOR_VN (GPIO39), VDET_1 (GPIO34), VDET_2 (GPIO35).
+    {
+      sensors.add_digital_output("Compressor Control", 33);
+    }
+    {
+      sensors.add_digital_output("Laser Control", 32);
+      // We want 0 to be an error state for the laser.
+      sensors.sensors.back().set_thresholds(1,1,2,3);
     }
     // {
     //   sensors.add_analogue_sensor("Compressor Current", 35);
@@ -134,6 +148,11 @@ void setup()
     sensors.update();
     update_sensor_table_display();
     Serial.println("All done setting up sensors.");
+    // Serial.println("Setting up the speaker.");
+
+    // SpeakInit();
+    // DingDong();
+
 }
 
 void loop()

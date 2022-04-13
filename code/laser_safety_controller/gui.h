@@ -17,6 +17,7 @@
 #define MONITOR_HOR_RES LV_HOR_RES
 #define MONITOR_VER_RES LV_VER_RES
 lv_obj_t *tabview;
+lv_obj_t *debug_label;
 
 void setup_gui(void) {
     /*Create a Tab view object*/
@@ -46,6 +47,10 @@ void setup_gui(void) {
     lv_table_set_row_cnt(unassigned_sensors_table, 2);
     lv_obj_set_click(unassigned_sensors_table, false);
     lv_table_set_col_width(unassigned_sensors_table, 0, 260);
+
+    debug_label = lv_label_create(io_config_tab, NULL);
+    lv_label_set_text(debug_label, "Debug info here");
+    lv_obj_align(debug_label, unassigned_sensors_table, LV_ALIGN_OUT_BOTTOM_LEFT , 10, 10);
 
     lv_obj_t *sensors_table = lv_table_create(status_tab, NULL);
     lv_obj_set_click(sensors_table, false);
@@ -104,7 +109,7 @@ void setup_gui(void) {
     lv_table_set_cell_type(sensors_table, row, 1, LV_TABLE_CELL_YELLOW);
     row++;
 
-    lv_table_set_cell_value(sensors_table, row, 0, "Resevoir Temp");
+    lv_table_set_cell_value(sensors_table, row, 0, "Reservoir Temp");
     lv_table_set_cell_value(sensors_table, row, 1, "31.2 °C");
     row++;
 
@@ -188,13 +193,17 @@ void update_sensor_table_display() {
     int row = 0;
 
     for (int i = 0; i < sensors.sensors.size(); i++) {
-        if (sensors.sensors[i].state == SENSOR_STATE_ALARM) {
+        // if (sensors.sensors[i].state == SENSOR_STATE_ALARM) {
+        if ((sensors.sensors[i].state == low_alarm) ||
+            (sensors.sensors[i].state == high_alarm) ||
+            (sensors.sensors[i].state == error)) {
             bg_colour = red;
             set_sensor_table_row(row++, sensors.sensors[i].name, sensors.sensors[i].get_printable(), LV_TABLE_CELL_RED);
         }
     }
     for (int i = 0; i < sensors.sensors.size(); i++) {
-        if (sensors.sensors[i].state == SENSOR_STATE_WARN) {
+        if ((sensors.sensors[i].state == low_warn) ||
+            (sensors.sensors[i].state == high_warn)) {
             if (bg_colour == white) {
                 bg_colour = yellow;
             }
@@ -202,7 +211,7 @@ void update_sensor_table_display() {
         }
     }
     for (int i = 0; i < sensors.sensors.size(); i++) {
-        if (sensors.sensors[i].state == SENSOR_STATE_NORMAL) {
+        if (sensors.sensors[i].state == normal) {
             set_sensor_table_row(row++, sensors.sensors[i].name, sensors.sensors[i].get_printable(), LV_TABLE_CELL_GREY);
         }
     }
@@ -240,7 +249,9 @@ void update_sensor_table_display() {
             lv_table_set_cell_value(sensors.unassigned_table, i, 0, buffer);
         }
     }
-
 }
 
+void set_debug(std::string message) {
+    lv_label_set_text(debug_label, message.c_str());
+}
 #endif
