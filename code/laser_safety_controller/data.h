@@ -36,8 +36,7 @@ enum sensor_state{
     low_warn,
     normal,
     high_warn,
-    high_alarm,
-    error
+    high_alarm
 };
 
 class Sensor {
@@ -51,8 +50,9 @@ class Sensor {
         // ALARM_LOW, WARN_LOW, WARN_HIGH, ALARM_HIGH
         int thresholds[4] = {1, 10, 50, 80};
         sensor_state state = normal;
-        bool read_error = false;
+        bool error = false;
         float scalar = 1.0f;
+        float offset = 0.0f;
         std::string unit = "";
         unsigned long error_deadline_ms = 0;
 
@@ -62,6 +62,7 @@ class Sensor {
 
         void set_unit(std::string unit);
         void set_scalar(float new_scalar);
+        void set_offset(float new_offset);
         void set_value(float new_value);
 
         std::string get_printable();

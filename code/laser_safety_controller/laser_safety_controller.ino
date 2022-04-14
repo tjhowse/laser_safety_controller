@@ -110,7 +110,7 @@ void setup()
     {
       DeviceAddress newAddress = {0x28,0xED,0xA2,0x79,0x97,0x14,0x3,0x91};
       sensors.add_onewire_sensor("Coolant Reservoir", newAddress);
-      sensors.sensors.back().set_thresholds(1,5,20,30);
+      sensors.sensors.back().set_thresholds(10,15,20,25);
     }
     {
       DeviceAddress newAddress = {0x28,0x37,0x43,0x79,0x97,0x14,0x3,0x8D};
@@ -133,12 +133,29 @@ void setup()
       // We want 0 to be an error state for the laser.
       sensors.sensors.back().set_thresholds(1,1,2,3);
     }
-    // {
-    //   sensors.add_analogue_sensor("Compressor Current", 35);
-    //   sensors.sensors.back().set_thresholds(0,0,8,12);
-    //   sensors.sensors.back().set_unit("Amps");
-    //   sensors.sensors.back().set_scalar(0.01);
-    // }
+    {
+      sensors.add_analogue_sensor("Cooler Current", 36);
+      sensors.sensors.back().set_thresholds(-1,-1,8,12);
+      sensors.sensors.back().set_unit("Amps");
+      // Sensor provides 66mV/A
+      // Grr. I now realise the ACS712 won't run at 3.3v.
+      //  0 amps, 2.5V
+      // 30 amps, 2.5V + 30*0.066: 4.48v
+      // Needs a voltage divider to bring it from 0-5v to 0-3.3v
+      // I'm using a 5:3 ratio, so 4.48v is 2.688v, is
+      // sensors.sensors.back().set_scalar(30/((4095/3.3)*1.98));
+      // Measured:
+      // 0A, 1776 ADC
+      // 0.69A, 1740 ADC
+      // 3.3A, 1609 ADC
+      float scalar = -3.3/(1776-1609);
+      float offset = -1776;
+      sensors.sensors.back().set_offset(offset);
+      sensors.sensors.back().set_scalar(scalar);
+
+      //
+
+    }
     // {
     //   DeviceAddress newAddress = {0x28,0xFF,0x68,0x3E,0x82,0x16,0x5,0x6E};
     //   sensors.add_onewire_sensor("Ambient", newAddress);

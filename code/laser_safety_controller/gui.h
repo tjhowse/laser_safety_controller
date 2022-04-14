@@ -196,7 +196,7 @@ void update_sensor_table_display() {
         // if (sensors.sensors[i].state == SENSOR_STATE_ALARM) {
         if ((sensors.sensors[i].state == low_alarm) ||
             (sensors.sensors[i].state == high_alarm) ||
-            (sensors.sensors[i].state == error)) {
+            (sensors.sensors[i].error)) {
             bg_colour = red;
             set_sensor_table_row(row++, sensors.sensors[i].name, sensors.sensors[i].get_printable(), LV_TABLE_CELL_RED);
         }

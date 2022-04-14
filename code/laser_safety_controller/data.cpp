@@ -112,12 +112,12 @@ void Sensors::update_logic() {
     // on the basis of sensor states. It is very possible to build a structure
     // around this, but it would be more complex than just writing things out here.
 
-    Sensor* reservoir = getSensorByName("Coolant Reservoir");
+    Sensor* reservoir_temp = getSensorByName("Coolant Reservoir");
     Sensor* compressor_control = getSensorByName("Compressor Control");
     Sensor* compressor_1_temp = getSensorByName("Compressor 1");
     Sensor* laser_control = getSensorByName("Laser Control");
 
-    if ((reservoir == NULL) ||
+    if ((reservoir_temp == NULL) ||
         (compressor_control == NULL) ||
         (compressor_1_temp == NULL) ||
         (laser_control == NULL)) {
@@ -128,39 +128,21 @@ void Sensors::update_logic() {
         return;
     }
 
-    if ((reservoir->state == error) ||
-        (compressor_1_temp->state == error)) {
-        laser_control->set_value(0);
-        compressor_control->set_value(0);
-        // set_debug("Sensor failsafe");
-        Serial.println("Error: Going failsafe, sensors unreadable.");
-        return;
-    }
-
-    // If the reservoir is not too cold, and the compressor is not too hot, run the compressor.
-    if ((reservoir->state >= normal) &&
-        (compressor_1_temp->state != error) &&
-        (reservoir->state >= normal) &&
-        (compressor_1_temp->state <= normal)) {
-        // if (compressor_control->value == 0) {
-        //     // We want to turn the compressor on, however it's off, so maybe we should
-        //     // wait for the temps to return to normal before turning back on.
-        //     if ((compressor_1_temp->state < high_warn) &&
-        //         (reservoir->state >= low_warn)){
-        //         compressor_control->set_value(1);
-        //     }
-        // }
-        // This hysteresis logic is going to take a bit more thought.
-        compressor_control->set_value(1);
-    } else {
-        compressor_control->set_value(0);
-    }
-
-    // If the reservoir is not too warm, turn the laser on.
-    if (reservoir->state <= normal) {
+    // Laser control
+    if (!reservoir_temp->error &&
+        (reservoir_temp->state <= normal)) {
         laser_control->set_value(1);
     } else {
         laser_control->set_value(0);
+    }
+
+    if (!compressor_1_temp->error &&
+        !reservoir_temp->error &&
+        (compressor_1_temp->state <= normal) &&
+        (reservoir_temp->state >= normal)) {
+        compressor_control->set_value(1);
+    } else {
+        compressor_control->set_value(0);
     }
 }
 
@@ -199,6 +181,11 @@ void Sensor::set_scalar(float new_scalar) {
     scalar = new_scalar;
 }
 
+void Sensor::set_offset(float new_offset) {
+    // Note the offset is applied to the raw ADC reading, not the scaled one.
+    offset = new_offset;
+}
+
 void Sensor::set_value(float new_value) {
     value = new_value;
     if (type == SENSOR_TYPE_DIGITAL_OUTPUT) {
@@ -212,11 +199,12 @@ void Sensor::set_value(float new_value) {
 }
 
 void Sensor::update() {
+    bool read_error;
     if (type == SENSOR_TYPE_DIGITAL ) {
         value = digitalRead(pin);
         read_error = false;
     } else if (type == SENSOR_TYPE_ANALOGUE) {
-        value = analogRead(pin) * scalar;
+        value = (analogRead(pin)+offset) * scalar;
         read_error = false;
     } else if (type == SENSOR_TYPE_ONEWIRE) {
         float prev_value = value;
@@ -231,6 +219,7 @@ void Sensor::update() {
     }
 
     if (!read_error) {
+        error = false;
         error_deadline_ms = millis() + SENSOR_ERROR_TIMEOUT_MS;
         if (value < thresholds[SENSOR_STATE_ALARM_LOW_INDEX]) {
             state = low_alarm;
@@ -245,7 +234,7 @@ void Sensor::update() {
         }
     } else {
         if (millis() > error_deadline_ms) {
-            state = error;
+            error = true;
         }
     }
 }
