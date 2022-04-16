@@ -186,7 +186,7 @@ Sensor::Sensor(std::string name, uint8_t pin, DeviceAddress address, uint8_t typ
     }
 }
 
-void Sensor::set_thresholds(int alarm_low, int warn_low, int warn_high, int alarm_high) {
+void Sensor::set_thresholds(float alarm_low, float warn_low, float warn_high, float alarm_high) {
     thresholds[SENSOR_STATE_ALARM_LOW_INDEX] = alarm_low;
     thresholds[SENSOR_STATE_WARN_LOW_INDEX] = warn_low;
     thresholds[SENSOR_STATE_WARN_HIGH_INDEX] = warn_high;

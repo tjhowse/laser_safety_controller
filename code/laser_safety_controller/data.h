@@ -53,7 +53,7 @@ class Sensor {
         float value = 0;
         DallasTemperature *dt_bus;
         // ALARM_LOW, WARN_LOW, WARN_HIGH, ALARM_HIGH
-        int thresholds[4] = {1, 10, 50, 80};
+        float thresholds[4] = {1, 10, 50, 80};
         sensor_state state = normal;
         bool error = false;
         float scalar = 1.0f;
@@ -65,7 +65,7 @@ class Sensor {
 
         Sensor(std::string name, uint8_t pin, DeviceAddress address, uint8_t type);
         void update();
-        void set_thresholds(int alarm_low, int warn_low, int warn_high, int alarm_high);
+        void set_thresholds(float alarm_low, float warn_low, float warn_high, float alarm_high);
 
         void set_unit(std::string unit);
         void set_scalar(float new_scalar);
