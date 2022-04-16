@@ -156,6 +156,20 @@ void setup()
       //
 
     }
+    {
+      sensors.add_encoder_sensor("Coolant Flow", 35);
+      // TODO change this unit when I add a scalar.
+      sensors.sensors.back().set_thresholds(1,1,3,4);
+      sensors.sensors.back().set_scalar(1/4.8);
+      sensors.sensors.back().set_unit("L/min");
+    }
+    // water flow sensor:
+    // https://www.ebay.com.au/itm/234183826875
+    // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/pcnt.html
+    // https://lochnerweb.de/frequency-measurement-on-esp32
+    // https://github.com/DevX8000/ESP32-PCNT-Arduino-Example/blob/master/src/main.cpp
+    // https://github.com/madhephaestus/ESP32Encoder/
+
     // {
     //   DeviceAddress newAddress = {0x28,0xFF,0x68,0x3E,0x82,0x16,0x5,0x6E};
     //   sensors.add_onewire_sensor("Ambient", newAddress);

@@ -10,4 +10,5 @@ You'll need to add a bunch of libraries in the arduino library manager:
 * TFT_eSPI by Bodmer
 * OneWire by Jim Studt et al
 * DallasTemperature by Miles Burton et al
+* ESP32Encoder by Kevin Harrington
 * And probably a few more I've forgotten. Good luck!

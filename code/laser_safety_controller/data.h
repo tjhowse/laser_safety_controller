@@ -4,6 +4,7 @@
 #define SENSOR_TYPE_ONEWIRE 1
 #define SENSOR_TYPE_ANALOGUE 2
 #define SENSOR_TYPE_DIGITAL_OUTPUT 3
+#define SENSOR_TYPE_ENCODER 4
 
 #define SENSOR_STATE_ALARM_LOW_INDEX 0
 #define SENSOR_STATE_WARN_LOW_INDEX 1
@@ -14,7 +15,10 @@
 
 #define ONEWIRE_PIN 27
 
+// If we don't get a good value from a sensor inside this time period, set an alarm.
 #define SENSOR_ERROR_TIMEOUT_MS 1000
+// If we get fewer than 10 encoder ticks inside this time period, force a sample.
+#define SENSOR_ENCODER_TIMEOUT_MS 1000
 
 #include <memory>
 #include <ctype.h>
@@ -25,6 +29,7 @@
 #include <Arduino.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include <ESP32Encoder.h>
 
 #ifndef DATA_H
 #define DATA_H
@@ -55,6 +60,8 @@ class Sensor {
         float offset = 0.0f;
         std::string unit = "";
         unsigned long error_deadline_ms = 0;
+        unsigned long last_update_ms = 0;
+        ESP32Encoder* encoder;
 
         Sensor(std::string name, uint8_t pin, DeviceAddress address, uint8_t type);
         void update();
@@ -64,6 +71,8 @@ class Sensor {
         void set_scalar(float new_scalar);
         void set_offset(float new_offset);
         void set_value(float new_value);
+
+        void set_encoder(float new_value);
 
         std::string get_printable();
 
@@ -89,6 +98,7 @@ class Sensors {
         void add_digital_sensor(std::string name, uint8_t pin);
         void add_digital_output(std::string name, uint8_t pin);
         void add_analogue_sensor(std::string name, uint8_t pin);
+        void add_encoder_sensor(std::string name, uint8_t pin);
 
         void register_table(lv_obj_t *new_table) {
             table = new_table;

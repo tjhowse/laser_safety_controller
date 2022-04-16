@@ -101,6 +101,13 @@ void Sensors::add_digital_output(std::string name, uint8_t pin) {
 }
 
 
+void Sensors::add_encoder_sensor(std::string name, uint8_t pin) {
+    Sensor sensor(name, pin, NULL, SENSOR_TYPE_ENCODER);
+
+    // I think this copies the object. I also think I hate C++.
+    sensors.push_back(sensor);
+}
+
 void Sensors::update() {
     update_table();
     update_values();
@@ -116,10 +123,13 @@ void Sensors::update_logic() {
     Sensor* compressor_control = getSensorByName("Compressor Control");
     Sensor* compressor_1_temp = getSensorByName("Compressor 1");
     Sensor* laser_control = getSensorByName("Laser Control");
+    Sensor* coolant_flow = getSensorByName("Coolant Flow");
+
 
     if ((reservoir_temp == NULL) ||
         (compressor_control == NULL) ||
         (compressor_1_temp == NULL) ||
+        (coolant_flow == NULL) ||
         (laser_control == NULL)) {
         laser_control->set_value(0);
         compressor_control->set_value(0);
@@ -130,7 +140,9 @@ void Sensors::update_logic() {
 
     // Laser control
     if (!reservoir_temp->error &&
-        (reservoir_temp->state <= normal)) {
+        !coolant_flow->error &&
+        (reservoir_temp->state <= normal) &&
+        (coolant_flow->state >= normal)) {
         laser_control->set_value(1);
     } else {
         laser_control->set_value(0);
@@ -138,8 +150,10 @@ void Sensors::update_logic() {
 
     if (!compressor_1_temp->error &&
         !reservoir_temp->error &&
+        !coolant_flow->error &&
         (compressor_1_temp->state <= normal) &&
-        (reservoir_temp->state >= normal)) {
+        (reservoir_temp->state >= normal) &&
+        (coolant_flow->state >= normal)) {
         compressor_control->set_value(1);
     } else {
         compressor_control->set_value(0);
@@ -162,6 +176,13 @@ Sensor::Sensor(std::string name, uint8_t pin, DeviceAddress address, uint8_t typ
     } else if (type == SENSOR_TYPE_DIGITAL_OUTPUT) {
         pinMode(pin, OUTPUT);
         set_thresholds(-2,-1,2,3);
+    } else if (type == SENSOR_TYPE_ENCODER) {
+        encoder = new ESP32Encoder();
+        ESP32Encoder::useInternalWeakPullResistors=DOWN;
+
+        // TODO confirm that providing pin 1 here doesn't cause problems.
+        encoder->attachSingleEdge(pin, 1);
+        encoder->clearCount();
     }
 }
 
@@ -203,9 +224,11 @@ void Sensor::update() {
     if (type == SENSOR_TYPE_DIGITAL ) {
         value = digitalRead(pin);
         read_error = false;
+        last_update_ms = millis();
     } else if (type == SENSOR_TYPE_ANALOGUE) {
         value = (analogRead(pin)+offset) * scalar;
         read_error = false;
+        last_update_ms = millis();
     } else if (type == SENSOR_TYPE_ONEWIRE) {
         float prev_value = value;
         value = dt_bus->getTempC(address);
@@ -215,7 +238,17 @@ void Sensor::update() {
         } else {
             read_error = false;
         }
-
+        last_update_ms = millis();
+    } else if (type == SENSOR_TYPE_ENCODER) {
+        int32_t temp = -encoder->getCount();
+        if ((temp > 10) || ((millis()-last_update_ms) > SENSOR_ENCODER_TIMEOUT_MS)) {
+            // Rescale the raw counts to counts/second.
+            value = temp/((millis()-last_update_ms)/1000);
+            value *= scalar;
+            encoder->clearCount();
+            last_update_ms = millis();
+        }
+        read_error = false;
     }
 
     if (!read_error) {
@@ -259,6 +292,9 @@ std::string Sensor::get_printable() {
         } else {
             return "Off";
         }
+    } else if (type == SENSOR_TYPE_ENCODER) {
+        sprintf(buffer, "%0.1f %s", value, unit.c_str());
+        return std::string(buffer);
     }
     return "Unknown";
 }
