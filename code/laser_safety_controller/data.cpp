@@ -112,6 +112,10 @@ void Sensors::update() {
     update_table();
     update_values();
     update_logic();
+    if (millis() > mqtt_report_deadline_ms) {
+        update_mqtt();
+        mqtt_report_deadline_ms = millis() + sensor_mqtt_report_interval_ms;
+    }
 }
 
 void Sensors::update_logic() {
@@ -160,8 +164,23 @@ void Sensors::update_logic() {
     }
 }
 
-Sensors::init_mqtt(std::string mqtt_server, int mqtt_port, std::string mqtt_user, std::string mqtt_password) {
+void Sensors::set_mqtt_client(PubSubClient* client) {
+    mqtt = client;
+}
 
+void Sensors::update_mqtt() {
+    if ((mqtt == NULL) || !mqtt->connected()) {
+        return;
+    }
+    char topic_buffer[64];
+    char value_buffer[64];
+    for (int i = 0; i < sensors.size(); i++) {
+        sprintf(topic_buffer, "laser/%s/value", sensors[i].name.c_str());
+        // Publishing the sensor value as a string because this mqtt library
+        // doesn't have a way to publish floats.
+        sprintf(value_buffer, "%f", sensors[i].value);
+        mqtt->publish(topic_buffer, value_buffer);
+    }
 }
 
 Sensor::Sensor(std::string name, uint8_t pin, DeviceAddress address, uint8_t type)

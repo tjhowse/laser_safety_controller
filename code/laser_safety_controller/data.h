@@ -30,9 +30,12 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <ESP32Encoder.h>
+#include <PubSubClient.h>
 
 #ifndef DATA_H
 #define DATA_H
+// Report values on the MQTT bus every this many milliseconds.
+static const int sensor_mqtt_report_interval_ms = 5000;
 
 // Note the ordering of this enum is important - it lets us write things like
 // if (sensor->state <= normal) { ... }
@@ -93,6 +96,8 @@ class Sensors {
         lv_obj_t *unassigned_table;
         DallasTemperature* dt_bus;
         std::vector<myDeviceAddress> unassigned_addresses;
+        PubSubClient* mqtt = NULL;
+        unsigned long mqtt_report_deadline_ms = 0;
 
         void add_onewire_sensor(std::string name, DeviceAddress address);
         void add_digital_sensor(std::string name, uint8_t pin);
@@ -111,7 +116,7 @@ class Sensors {
 
         Sensor* getSensorByName(std::string name);
 
-        void init_mqtt(std::string mqtt_server, int mqtt_port, std::string mqtt_user, std::string mqtt_password);
+        void set_mqtt_client(PubSubClient* client);
 
 
         void update();

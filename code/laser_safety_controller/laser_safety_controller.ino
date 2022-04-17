@@ -1,4 +1,6 @@
 #include <M5Core2.h>
+#include <WiFi.h>
+#include <PubSubClient.h>
 
 #include "AXP192.h"
 #include <Arduino.h>
@@ -26,6 +28,9 @@ DallasTemperature dallas(&oneWire);
 Sensors sensors(&dallas);
 
 unsigned long table_update_deadline_ms;
+
+WiFiClient espClient;
+PubSubClient mqtt(espClient);
 
 #include "gui.h"
 
@@ -62,6 +67,50 @@ void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color
     lv_disp_flush_ready(disp);
 }
 
+bool init_wifi() {
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(wifi_ssid, wifi_password);
+  M5.Lcd.printf("Connecting to WIFI SSID: %s\n\n", wifi_ssid);
+  unsigned long deadline_ms = millis() + 5000;
+  while ((WiFi.status() != WL_CONNECTED) && (millis() < deadline_ms)) {
+    delay(10);
+  }
+  if (WiFi.status() != WL_CONNECTED) {
+    M5.Lcd.println("\nFailed to connect to WIFI");
+    M5.Lcd.println("\nCheck secrets.h");
+    delay(2000);
+    return false;
+  } else {
+    M5.Lcd.printf("\nConnected to WIFI");
+    delay(200);
+    return true;
+  }
+}
+
+bool init_mqtt() {
+  mqtt.setServer(mqtt_hostname, 1883);
+  if (!mqtt.connect("LaserSafetyController", mqtt_username, mqtt_password)) {
+    M5.Lcd.println("\nFailed to connect to MQTT");
+    delay(2000);
+    return false;
+  } else {
+    M5.Lcd.println("\nConnected to MQTT");
+    mqtt.publish("laser/status", "online");
+    delay(200);
+    return true;
+  }
+  return true;
+}
+
+bool check_mqtt() {
+  if (!mqtt.connected()) {
+    if (!init_mqtt()) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void setup()
 {
     // Gotta turn off I2CEnable for pins 32 and 33 to work. ¯\_(ツ)_/¯
@@ -73,14 +122,18 @@ void setup()
     M5.Axp.SetLcdVoltage(3300);
     M5.Axp.SetBusPowerMode(0);
     M5.Axp.SetCHGCurrent(AXP192::kCHG_190mA);
-    M5.Axp.SetLDOEnable(3, true);
-    delay(150);
-    M5.Axp.SetLDOEnable(3, false);
+    // M5.Axp.SetLDOEnable(3, true);
+    // delay(150);
+    // M5.Axp.SetLDOEnable(3, false);
     M5.Axp.SetLed(1);
     delay(100);
     M5.Axp.SetLed(0);
     M5.Axp.SetLDOVoltage(3, 3300);
     M5.Axp.SetLed(1);
+
+    if (init_wifi()) {
+      init_mqtt();
+    }
 
     lv_disp_buf_init(&disp_buf, buf, NULL, LV_HOR_RES_MAX * 10);
     lv_init();
@@ -101,6 +154,7 @@ void setup()
     indev_drv.read_cb = my_touchpad_read;
     lv_indev_drv_register(&indev_drv);
     Serial.println("Setting up gui");
+
     setup_gui();
 
     dallas.begin();
@@ -180,6 +234,7 @@ void setup()
     // }
     sensors.discover_new_sensors_on_bus();
     sensors.update();
+    sensors.set_mqtt_client(&mqtt);
     update_sensor_table_display();
     Serial.println("All done setting up sensors.");
     // Serial.println("Setting up the speaker.");
@@ -191,6 +246,9 @@ void setup()
 
 void loop()
 {
+  // TODO Uncomment this once it is made non-blocking. Reporting values via WIFI is a nice-to-have.
+  // If it blocks the safety loop we don't want to bother reconnecting.
+  // check_mqtt();
   sensors.update();
   lv_task_handler(); /* let the GUI do its work */
 
