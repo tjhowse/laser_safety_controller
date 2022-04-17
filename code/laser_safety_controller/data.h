@@ -111,11 +111,15 @@ class Sensors {
 
         Sensor* getSensorByName(std::string name);
 
+        void init_mqtt(std::string mqtt_server, int mqtt_port, std::string mqtt_user, std::string mqtt_password);
+
+
         void update();
 
         void update_table();
         void update_values();
         void update_logic();
+        void update_mqtt();
 
         void discover_new_sensors_on_bus();
 

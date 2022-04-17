@@ -160,6 +160,10 @@ void Sensors::update_logic() {
     }
 }
 
+Sensors::init_mqtt(std::string mqtt_server, int mqtt_port, std::string mqtt_user, std::string mqtt_password) {
+
+}
+
 Sensor::Sensor(std::string name, uint8_t pin, DeviceAddress address, uint8_t type)
 {
     this->name = name;
