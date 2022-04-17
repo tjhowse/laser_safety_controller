@@ -11,13 +11,14 @@
 #include <DallasTemperature.h>
 #include "sound.h"
 
+//#include "secrets.h"
+#include "secrets_real.h" // I haven't checked this in.
+
 #define TABLE_UPDATE_INTERVAL_MS 500
 
 TFT_eSPI tft = TFT_eSPI(); /* TFT instance */
 static lv_disp_buf_t disp_buf;
 static lv_color_t buf[LV_HOR_RES_MAX * 10];
-
-#include "secrets.h"
 
 
 OneWire oneWire(ONEWIRE_PIN);
