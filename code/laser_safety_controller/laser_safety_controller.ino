@@ -225,7 +225,6 @@ void setup()
     }
     {
       sensors.add_encoder_sensor("Coolant Flow", 35);
-      // TODO change this unit when I add a scalar.
       sensors.sensors.back().set_thresholds(0.1,0.5,3,4);
       sensors.sensors.back().set_scalar(1/4.8);
       sensors.sensors.back().set_unit("L/min");
