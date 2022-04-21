@@ -179,6 +179,16 @@ void setup()
       sensors.add_onewire_sensor("Compressor 2", newAddress);
       sensors.sensors.back().set_thresholds(1,5,50,60);
     }
+    {
+      DeviceAddress newAddress = {0x28,0xAE,0x49,0x79,0x97,0x14,0x03,0x17};
+      sensors.add_onewire_sensor("Laser Coolant Inlet", newAddress);
+      sensors.sensors.back().set_thresholds(10,15,20,25);
+    }
+    {
+      DeviceAddress newAddress = {0x28,0xFF,0x68,0x3E,0x82,0x16,0x05,0x6E};
+      sensors.add_onewire_sensor("Laser Coolant Outlet", newAddress);
+      sensors.sensors.back().set_thresholds(10,15,25,35);
+    }
     // The following pins are input-only:
     //     ENSOR_VP (GPIO36), SENSOR_CAPP (GPIO37),
     // SENSOR_CAPN (GPIO38), SENSOR_VN (GPIO39), VDET_1 (GPIO34), VDET_2 (GPIO35).
@@ -232,9 +242,9 @@ void setup()
     //   sensors.add_onewire_sensor("Ambient", newAddress);
     //   sensors.sensors.back().set_thresholds(1,5,30,60);
     // }
+    sensors.set_mqtt_client(&mqtt);
     sensors.discover_new_sensors_on_bus();
     sensors.update();
-    sensors.set_mqtt_client(&mqtt);
     update_sensor_table_display();
     Serial.println("All done setting up sensors.");
     // Serial.println("Setting up the speaker.");

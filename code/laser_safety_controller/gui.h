@@ -162,14 +162,8 @@ void setup_gui(void) {
                                       {0x28,0xFF,0x68,0x3E,0x82,0x16,0x5,0x6E}};
 
     char buffer[32];
-    buffer[0] = '{';
     for (int i = 0; i < 2; i++) {
-        for (int j = 0; j < 8; j++) {
-            // May god have mercy on my soul.
-            sprintf(buffer+j*3+1, "%02X,", test_addresses[i][j]);
-        }
-        buffer[24] = '}';
-        buffer[25] = '\0';
+        populate_device_address_into_char_buffer(test_addresses[i], buffer);
         lv_table_set_cell_value(unassigned_sensors_table, i, 0, buffer);
     }
 }
@@ -232,20 +226,11 @@ void update_sensor_table_display() {
             lv_obj_set_style_local_bg_color(tabview, LV_TABVIEW_PART_BG, LV_STATE_DEFAULT, LV_COLOR_WHITE);
             break;
     }
-    // lv_obj_set_style_local_bg_color(tabview, LV_TABVIEW_PART_BG, LV_STATE_DEFAULT, bg_colour);
-
-    // This is busted in a nasty w
     if (sensors.unassigned_addresses.size() != lv_table_get_row_cnt(sensors.unassigned_table)) {
         lv_table_set_row_cnt(sensors.unassigned_table, sensors.unassigned_addresses.size());
         char buffer[32];
-        buffer[0] = '{';
         for (int i = 0; i < sensors.unassigned_addresses.size(); i++) {
-            for (int j = 0; j < 8; j++) {
-                // May god have mercy on my soul.
-                sprintf(buffer+j*3+1, "%02X,", sensors.unassigned_addresses[i].a[j]);
-            }
-            buffer[24] = '}';
-            buffer[25] = '\0';
+            populate_device_address_into_char_buffer(sensors.unassigned_addresses[i].a, buffer);
             lv_table_set_cell_value(sensors.unassigned_table, i, 0, buffer);
         }
     }

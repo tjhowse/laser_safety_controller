@@ -4,11 +4,14 @@ Sensors::Sensors(DallasTemperature* dt_bus) {
     this->dt_bus = dt_bus;
 }
 
-void Sensors::update_table(void) {
-    // Iterate over the sensors and update the values displayed in the table.
-    // for (Sensor s : sensors) {
-
-    // }
+void populate_device_address_into_char_buffer(DeviceAddress address, char* buffer) {
+    buffer[0] = '{';
+    for (int j = 0; j < 8; j++) {
+        // May god have mercy on my soul.
+        sprintf(buffer+j*3+1, "%02X,", address[j]);
+    }
+    buffer[24] = '}';
+    buffer[25] = '\0';
 }
 
 void Sensors::update_values() {
@@ -42,17 +45,15 @@ void Sensors::discover_new_sensors_on_bus() {
         }
         if (new_sensor) {
             // We don't have this sensor yet, add it
-            Serial.print("Found new sensor with address: {");
-            for (uint8_t j=0; j<8; j++) {
-                Serial.print("0x");
-                Serial.print(address[j], HEX);
-                if (j < 7) {
-                    Serial.print(",");
-                }
-            }
-            Serial.println("}");
+            char buffer[32];
+            populate_device_address_into_char_buffer(address, buffer);
+            Serial.print("Found new sensor with address: ");
+            Serial.println(buffer);
             Serial.println("Add this to the setup function.");
             unassigned_addresses.push_back(myDeviceAddress(address));
+            if ((mqtt != NULL) && (mqtt->connected())) {
+                mqtt->publish("laser/unknown_onewire_sensor", buffer);
+            }
             add_onewire_sensor("Unknown", address);
 
         }
@@ -109,7 +110,6 @@ void Sensors::add_encoder_sensor(std::string name, uint8_t pin) {
 }
 
 void Sensors::update() {
-    update_table();
     update_values();
     update_logic();
     if (millis() > mqtt_report_deadline_ms) {

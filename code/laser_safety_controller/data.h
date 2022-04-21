@@ -121,14 +121,13 @@ class Sensors {
 
         void update();
 
-        void update_table();
         void update_values();
         void update_logic();
         void update_mqtt();
 
         void discover_new_sensors_on_bus();
-
-
 };
+
+void populate_device_address_into_char_buffer(DeviceAddress address, char* buffer);
 
 #endif
