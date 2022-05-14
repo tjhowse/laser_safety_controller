@@ -202,7 +202,7 @@ void setup()
     }
     {
       sensors.add_analogue_sensor("Cooler Current", 36);
-      sensors.sensors.back().set_thresholds(-1,-1,8,12);
+      sensors.sensors.back().set_thresholds(-1,-1,14,18);
       sensors.sensors.back().set_unit("Amps");
       // Sensor provides 66mV/A
       // Grr. I now realise the ACS712 won't run at 3.3v.

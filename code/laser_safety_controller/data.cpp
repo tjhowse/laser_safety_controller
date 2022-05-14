@@ -126,6 +126,7 @@ void Sensors::update_logic() {
     Sensor* reservoir_temp = getSensorByName("Coolant Reservoir");
     Sensor* compressor_control = getSensorByName("Compressor Control");
     Sensor* compressor_1_temp = getSensorByName("Compressor 1");
+    Sensor* compressor_2_temp = getSensorByName("Compressor 2");
     Sensor* laser_control = getSensorByName("Laser Control");
     Sensor* coolant_flow = getSensorByName("Coolant Flow");
 
@@ -133,6 +134,7 @@ void Sensors::update_logic() {
     if ((reservoir_temp == NULL) ||
         (compressor_control == NULL) ||
         (compressor_1_temp == NULL) ||
+        (compressor_2_temp == NULL) ||
         (coolant_flow == NULL) ||
         (laser_control == NULL)) {
         laser_control->set_value(0);
@@ -153,9 +155,11 @@ void Sensors::update_logic() {
     }
 
     if (!compressor_1_temp->error &&
+        !compressor_2_temp->error &&
         !reservoir_temp->error &&
         !coolant_flow->error &&
         (compressor_1_temp->state <= normal) &&
+        (compressor_2_temp->state <= normal) &&
         (reservoir_temp->state >= normal) &&
         (coolant_flow->state >= normal)) {
         compressor_control->set_value(1);
